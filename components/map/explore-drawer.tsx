@@ -64,7 +64,7 @@ export function ExploreDrawer() {
                 }`}
                 onClick={() => setSelectedSpot(spot.id)}
               >
-                <CardHeader className="p-3 pb-2">
+                <CardHeader className="p-3 pb-1">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <CardTitle className="text-sm font-medium truncate">{spot.name}</CardTitle>
@@ -81,6 +81,10 @@ export function ExploreDrawer() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-3 pt-0">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="w-3 h-3" />
+                    <span>{spot.openingHours}</span>
+                  </div>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
