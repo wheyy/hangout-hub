@@ -71,7 +71,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
             className={activeTab === "tracking" ? "bg-blue-600 text-white" : ""}
           >
             <Users className="w-4 h-4 mr-1" />
-            Location Sharing
+            Group Management
           </Button>
         </div>
       </header>

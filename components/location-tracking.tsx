@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle } from "lucide-react"
+import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail } from "lucide-react"
 import { useState, useEffect } from "react"
+import { Input } from "./ui/input"
 
 interface GroupMember {
   id: string
@@ -31,6 +32,13 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [inviteEmail, setInviteEmail] = useState("")
+
+
+  const handleGenerateLink = () => {
+    // Generate invite link logic
+    console.log("Generating invite link for:", inviteEmail)
+  }
 
   // Mock group members data
   const [groupMembers] = useState<GroupMember[]>([
@@ -186,6 +194,30 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
             <p>• Location updates automatically every 5 seconds</p>
             <p>• You can stop sharing at any time</p>
             <p>• Sharing ends when you arrive at the destination</p>
+          </div>
+        </CardContent>
+      </Card>
+
+                {/* Send Invite Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Mail className="w-5 h-5" />
+            Send Invite
+          </CardTitle>
+          <p className="text-sm text-gray-600">Generate a shareable invite link for your meetup.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Enter email address"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="flex-1"
+            />
+            <Button onClick={handleGenerateLink} className="bg-gray-900 hover:bg-gray-800 text-white">
+              Generate Link
+            </Button>
           </div>
         </CardContent>
       </Card>

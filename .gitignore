@@ -3,6 +3,7 @@
 # Others
 changes.md
 .DS_Store
+/prototypes
 
 # dependencies
 /node_modules

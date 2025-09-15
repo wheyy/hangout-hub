@@ -12,8 +12,7 @@ import { Navbar } from "@/components/navbar"
 
 export default function MeetupsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState("")
-
+  
   // Mock active meetups
   const activeMeetups = [
     {
@@ -32,10 +31,10 @@ export default function MeetupsPage() {
     // Empty for now - matches the "No invitations yet" state in screenshot
   ]
 
-  const handleGenerateLink = () => {
-    // Generate invite link logic
-    console.log("Generating invite link for:", inviteEmail)
-  }
+  // const handleGenerateLink = () => {
+  //   // Generate invite link logic
+  //   console.log("Generating invite link for:", inviteEmail)
+  // }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -97,9 +96,9 @@ export default function MeetupsPage() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6"> */}
           {/* Send Invite Section */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Mail className="w-5 h-5" />
@@ -120,10 +119,10 @@ export default function MeetupsPage() {
                 </Button>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Create Meetup Section */}
-          <Card>
+          <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <UserPlus className="w-5 h-5" />
@@ -141,7 +140,7 @@ export default function MeetupsPage() {
               </Button>
             </CardContent>
           </Card>
-        </div>
+        {/* </div> */}
 
         {/* Invitations Section */}
         <Card className="mt-6">
