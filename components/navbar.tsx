@@ -56,6 +56,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { HiOutlineUserCircle } from "react-icons/hi2";
 import { cn } from "@/lib/utils"
 import { MapPin, Users, Menu } from "lucide-react"
 
@@ -113,16 +114,11 @@ export function Navbar() {
                 <Link
                   href="/profile"
                   className={cn(
-                    "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-foreground/80",
-                    pathname === "/profile" ? "text-foreground" : "text-foreground/60"
+                  "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-foreground/80",
+                  pathname === "/profile" ? "text-foreground" : "text-foreground/60"
                   )}
-                  >
-                    <img
-                      src="/Users/lkw/Desktop/NTU/AY2025:Y1S2/SC2006/hangout-hub/public/placeholder-user.jpg"
-                      alt="./placeholder-user.jpg"
-                      className="h-6 w-6 rounded-full"
-                    />
-                    {/* <span>Profile</span> */}
+                >
+                <HiOutlineUserCircle className="h-4 w-4" /> {/* Can be updated to user icon in the future */}
                 </Link>
               </div>
 
@@ -186,6 +182,19 @@ export function Navbar() {
                 <Users className="h-4 w-4" />
                 <span>Meetups</span>
               </Link>
+
+              <Link
+                  href="/profile"
+                  className={cn(
+                  "flex items-center space-x-2 rounded-xl px-3 py-2 text-sm font-medium",
+                  pathname === "/profile" 
+                    ? "bg-accent text-accent-foreground"
+                    : "text-foreground/70 hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <HiOutlineUserCircle className="h-4 w-4" /> {/* Can be updated to user icon in the future */}
+                  <span>Profile</span>
+                </Link>
             </div>
           </div>
         </div>
