@@ -17,13 +17,18 @@ export default function HomePage() {
               <span className="text-xl font-bold text-gray-900">Hangout Hub</span>
             </div>
             <div className="flex items-center gap-4">
-              <Link href="/auth/login">
+              {/* <Link href="/auth/login">
                 <Button variant="ghost" className="text-gray-700 hover:text-blue-600">
                   Sign In
                 </Button>
               </Link>
               <Link href="/auth/register">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">Get Started</Button>
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Get Started</Button>
+              </Link> */}
+              <Link href="/auth/login">
+                <Button variant="ghost" className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white90">
+                  Sign In
+                </Button>
               </Link>
             </div>
           </div>

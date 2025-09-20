@@ -110,6 +110,20 @@ export function Navbar() {
                   <Users className="h-4 w-4" />
                   <span>Meetups</span>
                 </Link>
+                <Link
+                  href="/profile"
+                  className={cn(
+                    "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-foreground/80",
+                    pathname === "/profile" ? "text-foreground" : "text-foreground/60"
+                  )}
+                  >
+                    <img
+                      src="/Users/lkw/Desktop/NTU/AY2025:Y1S2/SC2006/hangout-hub/public/placeholder-user.jpg"
+                      alt="./placeholder-user.jpg"
+                      className="h-6 w-6 rounded-full"
+                    />
+                    {/* <span>Profile</span> */}
+                </Link>
               </div>
 
               {/* Mobile menu button (new, minimal addition) */}

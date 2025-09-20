@@ -1,12 +1,14 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail } from "lucide-react"
+import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Input } from "./ui/input"
+
 
 interface GroupMember {
   id: string
@@ -21,26 +23,31 @@ interface GroupMember {
   status: "online" | "offline" | "arrived"
 }
 
-interface LocationTrackingProps {
+interface GroupManagementProps {
   meetupId: string
   isActive: boolean
   onLocationShare: (enabled: boolean) => void
 }
 
-export function LocationTracking({ meetupId, isActive, onLocationShare }: LocationTrackingProps) {
+export function GroupManagement({ meetupId, isActive, onLocationShare }: GroupManagementProps) {
   const [isSharing, setIsSharing] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
-
+  const [hoveredMember, setHoveredMember] = useState<string | null>(null)
 
   const handleGenerateLink = () => {
     // Generate invite link logic
     console.log("Generating invite link for:", inviteEmail)
   }
 
-  // Mock group members data
+  const handleKickUser = (memberId: string, memberName: string) => {
+    console.log(`Kicking user ${memberName} (${memberId}) from meetup`)
+    // Here you would implement the actual kick logic
+    // For now, just showing the action in console
+  }
+
   const [groupMembers] = useState<GroupMember[]>([
     {
       id: "1",
@@ -64,7 +71,6 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
     },
   ])
 
-  // Request location permission
   const requestLocationPermission = async () => {
     try {
       const permission = await navigator.permissions.query({ name: "geolocation" })
@@ -87,7 +93,6 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
     }
   }
 
-  // Start location sharing
   const startLocationSharing = async () => {
     if (!hasPermission) {
       await requestLocationPermission()
@@ -97,7 +102,6 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
     setIsSharing(true)
     onLocationShare(true)
 
-    // Start location updates every 5 seconds
     const interval = setInterval(() => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -113,11 +117,9 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
       )
     }, 5000)
 
-    // Store interval ID for cleanup
     return () => clearInterval(interval)
   }
 
-  // Stop location sharing
   const stopLocationSharing = () => {
     setIsSharing(false)
     onLocationShare(false)
@@ -126,7 +128,6 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
   }
 
   useEffect(() => {
-    // Check initial permission status
     requestLocationPermission()
   }, [])
 
@@ -198,14 +199,14 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
         </CardContent>
       </Card>
 
-                {/* Send Invite Section */}
+      {/* Send Invite Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Mail className="w-5 h-5" />
             Send Invite
           </CardTitle>
-          <p className="text-sm text-gray-600">Generate a shareable invite link for your meetup.</p>
+          <p className="text-sm text-gray-600">Invite your friends to this meetup :)</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
@@ -216,7 +217,7 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
               className="flex-1"
             />
             <Button onClick={handleGenerateLink} className="bg-gray-900 hover:bg-gray-800 text-white">
-              Generate Link
+              Invite
             </Button>
           </div>
         </CardContent>
@@ -233,7 +234,12 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
         <CardContent>
           <div className="space-y-3">
             {groupMembers.map((member) => (
-              <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div
+                key={member.id}
+                className="relative flex items-center justify-between p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100"
+                onMouseEnter={() => setHoveredMember(member.id)}
+                onMouseLeave={() => setHoveredMember(null)}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                     <span className="text-white text-sm font-medium">
@@ -268,11 +274,25 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
                   </div>
                 </div>
 
-                {member.location && (
-                  <div className="text-xs text-gray-500">
-                    <div>Updated {Math.floor((Date.now() - member.location.timestamp) / 1000)}s ago</div>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {member.location && (
+                    <div className="text-xs text-gray-500">
+                      <div>Updated {Math.floor((Date.now() - member.location.timestamp) / 1000)}s ago</div>
+                    </div>
+                  )}
+
+                  {hoveredMember === member.id && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleKickUser(member.id, member.name)}
+                      className="ml-2 h-8 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
+                    >
+                      <UserX className="w-4 h-4" />
+                      <span className="ml-1 text-xs">Kick</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -310,3 +330,4 @@ export function LocationTracking({ meetupId, isActive, onLocationShare }: Locati
     </div>
   )
 }
+
