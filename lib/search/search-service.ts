@@ -84,7 +84,7 @@ export class SearchService {
     filters?: SearchFilters,
   ): Promise<SearchResult> {
     // Import spots data
-    const { singaporeSpots } = await import("@/lib/data/singapore-spots")
+    const { singaporeSpots } = await import("@/lib/data/hangoutspot")
 
     let filteredSpots = [...singaporeSpots]
 

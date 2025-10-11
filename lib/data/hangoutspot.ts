@@ -1,3 +1,6 @@
+// INTERFACE AND MOCK DATA are LEGACY CODE; Left here FOR REFERENCE (please delete or comment out when not needed anymore.)
+// Actual Class for the HangoutSpotEntity is below commented out so that current code can still work properly. (line 129) 
+
 export interface HangoutSpot {
   id: string
   name: string
@@ -11,7 +14,7 @@ export interface HangoutSpot {
   imageUrl: string
   amenities: string[]
   openingHours: string
-  parkingInfo?: {
+  parking?: {
     available: boolean
     type: "street" | "indoor" | "surface" | "mall"
     capacity?: number
@@ -119,3 +122,65 @@ export const getSpotsByCategory = (category: string): HangoutSpot[] => {
 export const getSpotsByPriceRange = (priceRange: string): HangoutSpot[] => {
   return singaporeSpots.filter((spot) => spot.priceRange === priceRange)
 }
+
+// ^^  ABOVE IS LEGACY CODE FOR REFERENCE  ^^ 
+//  Feel free to update this class, I did not vet the behaviours, might be wrong
+
+import { Location } from "./location"
+
+export enum PriceRange {
+  $ = "$",
+  $$ = "$$",
+  $$$ = "$$$",
+}
+
+// export class HangoutSpot {
+//   constructor(
+//     public id: string,
+//     public name: string,
+//     public category: string,
+//     public priceRange: "$" | "$$" | "$$$" | "$$$$",
+//     public rating: number,
+//     public reviewCount: number,
+//     public coordinates: GeolocationCoordinates,
+//     public address: string,
+//     public description: string,
+//     public imageUrl: string,
+//     public amenities: string[],
+//     public openingHours: string,
+//   ) {}
+
+//   // === Getters ===
+//   getName(): string {
+//     return this.name;
+//   }
+
+//   getAddress(): string {
+//     return this.address;
+//   }
+
+//   getCoordinates(): GeolocationCoordinates {
+//     return this.coordinates;
+//   }
+
+//   getRating(): number {
+//     return this.rating;
+//   }
+
+//   getPriceRange(): "$" | "$$" | "$$$" | "$$$$" {
+//     return this.priceRange;
+//   }
+
+//   getOperatingHours(): string {
+//     return this.openingHours;
+//   }
+
+//   getAmenities(): string[] {
+//     return this.amenities;
+//   }
+
+//   getParkingInfo(): parking | undefined {
+//     return this.parking;
+//   }
+
+// }

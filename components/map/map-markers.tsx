@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useMap } from "@/lib/map/map-provider"
-import { singaporeSpots } from "@/lib/data/singapore-spots"
+import { singaporeSpots } from "@/lib/data/hangoutspot"
 
 export function MapMarkers() {
   const { map, isLoaded } = useMap()

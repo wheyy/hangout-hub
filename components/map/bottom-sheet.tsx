@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Star, MapPin, Clock, GripHorizontal } from "lucide-react"
-import { singaporeSpots } from "@/lib/data/singapore-spots"
+import { singaporeSpots } from "@/lib/data/hangoutspot"
 import Image from "next/image"
 
 export function BottomSheet() {

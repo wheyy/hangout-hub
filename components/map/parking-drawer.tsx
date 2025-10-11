@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { ChevronLeft, ChevronRight, MapPin, Clock, DollarSign } from "lucide-react"
-import { singaporeSpots } from "@/lib/data/singapore-spots"
+import { singaporeSpots } from "@/lib/data/hangoutspot"
 
 export function ParkingDrawer() {
   const [isCollapsed, setIsCollapsed] = useState(false)

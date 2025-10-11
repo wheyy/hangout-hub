@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ChevronLeft, ChevronRight, Star, MapPin, Clock } from "lucide-react"
-import { singaporeSpots } from "@/lib/data/singapore-spots"
+import { singaporeSpots } from "@/lib/data/hangoutspot"
 import Image from "next/image"
 import { SearchBar } from "./search-bar"
 
