@@ -14,7 +14,7 @@ export interface HangoutSpot {
   imageUrl: string
   amenities: string[]
   openingHours: string
-  parking?: {
+  parkingInfo?: {
     available: boolean
     type: "street" | "indoor" | "surface" | "mall"
     capacity?: number
