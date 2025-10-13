@@ -20,3 +20,22 @@ export const MOCK_USERS: User[] = [
   { id: "user-9", name: "Ryan Anderson", email: "ryan.a@example.com" },
   { id: "user-10", name: "Sophie Chen", email: "sophie.c@example.com" },
 ]
+ // Initialize with example meetup (only runs once)
+if (typeof window !== "undefined") {
+  const existingMeetups = localStorage.getItem("meetups")
+  if (!existingMeetups) {
+    const exampleMeetup = {
+      id: "1",
+      title: "Coffee at Marina Bay",
+      destination: "Marina Bay Sands SkyPark",
+      date: "2025-06-09",
+      time: "08:21",
+      status: "active",
+      memberCount: 1,
+      creator: "Alex Chen",
+      creatorId: "user-1",
+      members: ["user-1"],
+    }
+    localStorage.setItem("meetups", JSON.stringify([exampleMeetup]))
+  }
+}
