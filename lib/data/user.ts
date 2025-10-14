@@ -10,7 +10,7 @@ export class User {
         public id: string,
         public name: string,
         public email: string,
-        public currentLocation: GeolocationCoordinates,
+        public currentLocation: [longitude: number, latitude: number] | null,
     ) {
         this.meetups = []
     }

@@ -8,12 +8,26 @@ export class Meetup {
 
     constructor(
         public id: string,
-        public title: String,
-        public dateTime: Intl.DateTimeFormat,
-        public destination: HangoutSpot,
-        public leader: User
+        public title: string,
+        public dateTime: Date,
+        // public destination: HangoutSpot,
+        public destination: string, //TODO: CHANGE TO HANGOUT SPOT WHEN Location search by Map Team is done
+        public creator: User
     ) {
-        this.members.push(leader) // Leader is automatically a member
+        this.members.push(creator) // Creator is automatically a member
+        this.creator.addMeetup(this)
+    }
+
+    static saveMeetup(meetup: Meetup): boolean {
+        // Placeholder for saving to a database or external storage
+        try {
+            
+        } catch (error) {
+            console.error("Error saving meetup:", error)
+            return false
+        }
+        console.log(`Meetup ${meetup.title} saved.`)
+        return true
     }
 
     addMember(user: User): void {
@@ -38,25 +52,29 @@ export class Meetup {
         return this.members
     }
 
-    updateDateTime(newDateTime: Intl.DateTimeFormat): boolean {
+    getMemberCount(): number {
+        return this.members.length
+    }
+
+    updateDateTime(newDateTime: Date): boolean {
         this.dateTime = newDateTime
         return true
     }
 
-    updateLeader(newLeader: User): boolean {
-        if (this.members.find(member => member.id === newLeader.id)) {
-            this.leader = newLeader
+    updateCreator(newCreator: User): boolean {
+        if (this.members.find(member => member.id === newCreator.id)) {
+            this.creator = newCreator
             return true
         }
         return false
     }
 
-    updateDestination(newHangoutSpot: HangoutSpot): boolean {
-        this.destination = newHangoutSpot
-        return true
-    }
+    // updateDestination(newHangoutSpot: HangoutSpot): boolean {
+    //     this.destination = newHangoutSpot
+    //     return true
+    // }
 
-    updateTitle(newTitle: String): boolean {
+    updateTitle(newTitle: string): boolean {
         this.title = newTitle
         return true
     }

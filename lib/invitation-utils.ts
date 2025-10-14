@@ -1,8 +1,9 @@
-import { Invitation, Meetup } from "@/types/invitation"
+import { Invitation } from "@/lib/data/invitation"
+import { Meetup } from "@/lib/data/meetup"
 
 // Check if invitation has expired (after meetup date)
 export const isInvitationExpired = (invitation: Invitation): boolean => {
-  const meetupDate = new Date(`${invitation.date}T${invitation.time}`)
+  const meetupDate = new Date(`${invitation.dateTime}`)
   return new Date() > meetupDate
 }
 
@@ -27,9 +28,9 @@ export const getMeetups = (): Meetup[] => {
   return stored ? JSON.parse(stored) : []
 }
 
-// Save meetups to localStorage
-export const saveMeetups = (meetups: Meetup[]): void => {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("meetups", JSON.stringify(meetups))
-  }
-}
+// // Save meetups to localStorage
+// export const saveMeetups = (meetups: Meetup[]): void => {
+//   if (typeof window !== "undefined") {
+//     localStorage.setItem("meetups", JSON.stringify(meetups))
+//   }
+// }

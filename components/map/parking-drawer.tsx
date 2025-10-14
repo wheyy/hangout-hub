@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { ChevronLeft, ChevronRight, MapPin, Clock, DollarSign } from "lucide-react"
 import { singaporeSpots } from "@/lib/data/hangoutspot"
+import { mockParkingSpots } from "@/lib/data/parkingspot"
 
 export function ParkingDrawer() {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [showParkingLayer, setShowParkingLayer] = useState(true)
 
-  const parkingSpots = singaporeSpots.filter((spot) => spot.parkingInfo?.available)
+  const parkingSpots = mockParkingSpots.filter((spot) => spot.isAvailable() == true)
 
   const getAvailabilityColor = (occupied: number, capacity: number) => {
     const percentage = (occupied / capacity) * 100
@@ -73,18 +74,18 @@ export function ParkingDrawer() {
           {/* Parking List */}
           <div className="flex-1 overflow-y-auto p-2 space-y-2">
             {parkingSpots.map((spot) => {
-              const parking = spot.parkingInfo!
+              const parking = spot!
               return (
-                <Card key={spot.id} className="cursor-pointer transition-all hover:shadow-md">
+                <Card key={spot.getCarparkCode()} className="cursor-pointer transition-all hover:shadow-md">
                   <CardHeader className="p-3 pb-2">
                     <CardTitle className="text-sm font-medium">{spot.name}</CardTitle>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs capitalize">
-                        {parking.type}
+                        {parking.getParkingType()}
                       </Badge>
-                      {parking.capacity && parking.occupied && (
-                        <Badge className={`text-xs ${getAvailabilityColor(parking.occupied, parking.capacity)}`}>
-                          {getAvailabilityText(parking.occupied, parking.capacity)}
+                      {parking.getTotalCapacity() && parking.getOccupied() && (
+                        <Badge className={`text-xs ${getAvailabilityColor(parking.getOccupied(), parking.getTotalCapacity())}`}>
+                          {getAvailabilityText(parking.getOccupied(), parking.getTotalCapacity())}
                         </Badge>
                       )}
                     </div>
@@ -97,12 +98,12 @@ export function ParkingDrawer() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{spot.openingHours}</span>
+                        <span>{spot.getOperatingHours()}</span>
                       </div>
-                      {parking.pricePerHour && (
+                      {parking.getRate() && (
                         <div className="flex items-center gap-1">
                           <DollarSign className="w-3 h-3" />
-                          <span>${parking.pricePerHour}/hour</span>
+                          <span>${parking.getRate()}/hour</span>
                         </div>
                       )}
                     </div>

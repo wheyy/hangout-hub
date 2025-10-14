@@ -11,8 +11,9 @@ import { CreateMeetupModal } from "@/components/create-meetup-modal"
 import { Navbar } from "@/components/navbar"
 import { InvitationCard } from "@/components/invitation-card"
 import { CURRENT_USER } from "@/lib/mock-data"
-import { Invitation, Meetup } from "@/types/invitation"
-import { getInvitations, saveInvitations, getMeetups, saveMeetups } from "@/lib/invitation-utils"
+import { getInvitations, saveInvitations, getMeetups } from "@/lib/invitation-utils"
+import { Meetup } from "@/lib/data/meetup"
+import { Invitation } from "../../lib/data/invitation"
 
 export default function MeetupsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -32,7 +33,7 @@ export default function MeetupsPage() {
 
   // Get active meetups for current user
   const activeMeetups = meetups.filter(
-    (meetup) => meetup.members.includes(CURRENT_USER.id) && meetup.status === "active"
+    (meetup) => meetup.getMembers().includes(CURRENT_USER) && meetup.get === "active"
   )
 
   const handleAcceptInvitation = (invitation: Invitation) => {
@@ -50,8 +51,9 @@ export default function MeetupsPage() {
       if (meetup.id === invitation.meetupId) {
         return {
           ...meetup,
-          members: [...meetup.members, CURRENT_USER.id],
-          memberCount: meetup.memberCount + 1,
+          // members: [...meetup.getMembers(), CURRENT_USER.id],
+          members: [...meetup.getMembers()],
+          memberCount: meetup.getMemberCount(),
         }
       }
       return meetup

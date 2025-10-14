@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mail, X, Send, Search, Check } from "lucide-react"
 import { MOCK_USERS, CURRENT_USER } from "@/lib/mock-data"
-import { Invitation, Meetup, User } from "@/types/invitation"
+import { Meetup } from "@/lib/data/meetup"
+import { User } from "@/lib/data/user"
+import { Invitation } from "@/lib/data/invitation"
 import { getInvitations, saveInvitations } from "@/lib/invitation-utils"
 
 interface SendInviteModalProps {
@@ -24,7 +26,7 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
   // Filter users: exclude current user, existing members, and apply search
   const availableUsers = MOCK_USERS.filter((user) => {
     if (user.id === CURRENT_USER.id) return false // Exclude self
-    if (meetup.members.includes(user.id)) return false // Exclude existing members
+    if (meetup.getMembers().some((member) => member.id === user.id)) return false // Exclude existing members
     if (searchQuery && !user.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !user.email.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
@@ -35,7 +37,7 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
       setSelectedUsers(selectedUsers.filter((u) => u.id !== user.id))
     } else {
       // Check if adding this user would exceed the limit
-      const totalAfterInvite = meetup.memberCount + selectedUsers.length + 1
+      const totalAfterInvite = meetup.getMemberCount() + selectedUsers.length + 1
       if (totalAfterInvite > 5) {
         alert("Cannot invite more users. Meetup has a maximum of 5 members.")
         return
@@ -53,8 +55,7 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
       meetupId: meetup.id,
       meetupTitle: meetup.title,
       destination: meetup.destination,
-      date: meetup.date,
-      time: meetup.time,
+      dateTime: meetup.dateTime,
       senderId: CURRENT_USER.id,
       senderName: CURRENT_USER.name,
       senderEmail: CURRENT_USER.email,
@@ -84,7 +85,7 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
             Invite Members to {meetup.title}
           </DialogTitle>
           <DialogDescription>
-            Search and select users to invite. Maximum {5 - meetup.memberCount} more member(s) can join.
+            Search and select users to invite. Maximum {5 - meetup.getMemberCount()} more member(s) can join.
           </DialogDescription>
         </DialogHeader>
 

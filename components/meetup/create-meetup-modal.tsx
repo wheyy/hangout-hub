@@ -7,9 +7,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Calendar, Clock } from "lucide-react"
 import { CURRENT_USER } from "@/lib/mock-data"
-import { Meetup } from "@/types/invitation"
-import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
+import { Meetup } from "@/lib/data/meetup"
+// import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
 import { useRouter } from "next/navigation"
+import { HangoutSpot } from "@/lib/data/hangoutspot"
+import { on } from "events"
+
+
 
 interface CreateMeetupModalProps {
   isOpen: boolean
@@ -28,21 +32,27 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    const newMeetup: Meetup = {
-      id: `meetup-${Date.now()}`,
-      title: formData.title,
-      destination: formData.destination,
-      date: formData.date,
-      time: formData.time,
-      status: "active",
-      memberCount: 1,
-      creator: CURRENT_USER.name,
-      creatorId: CURRENT_USER.id,
-      members: [CURRENT_USER.id],
-    }
+    const newMeetup: Meetup = new Meetup(
+      `meetup-${Date.now()}`, // id
+      formData.title, // title
+      //format dd/mm/yyyy
+      new Date(Date.UTC(formData.date.split("/")[2] as unknown as number, 
+                                  formData.date.split("/")[1] as unknown as number - 1, 
+                                  formData.date.split("/")[0] as unknown as number, 
+                                  formData.time.split(":")[0] as unknown as number, 
+                                  formData.time.split(":")[1] as unknown as number)), //dateTime
+      formData.destination, // destination
+      // date: formData.date,
+      // time: formData.time,
+      // status: "active",
+      // memberCount: 1,
+      CURRENT_USER, // creator
+      // creatorId: CURRENT_USER.id,
+      // members: [CURRENT_USER.id],
+    )
 
-    const existingMeetups = getMeetups()
-    saveMeetups([...existingMeetups, newMeetup])
+    const existingMeetups = CURRENT_USER.getMeetups()
+    Meetup.saveMeetup(newMeetup)
 
     // Reset form
     setFormData({ title: "", destination: "", date: "", time: "" })

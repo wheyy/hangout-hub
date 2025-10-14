@@ -7,12 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Star, MapPin, Clock, GripHorizontal } from "lucide-react"
 import { singaporeSpots } from "@/lib/data/hangoutspot"
 import Image from "next/image"
+import { mockParkingSpots } from "@/lib/data/parkingspot"
 
 export function BottomSheet() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [selectedTab, setSelectedTab] = useState("spots")
 
-  const parkingSpots = singaporeSpots.filter((spot) => spot.parkingInfo?.available)
+  const parkingSpots = mockParkingSpots.filter((spot) => spot.isAvailable() == true)
 
   const getPriceRangeColor = (priceRange: string) => {
     switch (priceRange) {
@@ -95,18 +96,18 @@ export function BottomSheet() {
           <TabsContent value="parking" className="flex-1 overflow-hidden">
             <div className="h-full overflow-y-auto px-4 space-y-3">
               {parkingSpots.map((spot) => {
-                const parking = spot.parkingInfo!
+                const parking = spot!
                 return (
-                  <Card key={spot.id} className="cursor-pointer transition-all hover:shadow-md">
+                  <Card key={spot.getCarparkCode()} className="cursor-pointer transition-all hover:shadow-md">
                     <CardHeader className="p-3">
                       <CardTitle className="text-sm font-medium">{spot.name}</CardTitle>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs capitalize">
-                          {parking.type}
+                          {parking.getParkingType()}
                         </Badge>
-                        {parking.capacity && parking.occupied && (
+                        {parking.getTotalCapacity() && parking.getOccupied() && (
                           <Badge className="text-xs bg-green-100 text-green-800">
-                            {parking.capacity - parking.occupied}/{parking.capacity} available
+                            {parking.isAvailable()}/{parking.getTotalCapacity()} available
                           </Badge>
                         )}
                       </div>

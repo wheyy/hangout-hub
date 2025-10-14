@@ -3,15 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { MapPin, Users, Calendar, Clock, Settings, ArrowLeft, Save, X, Mail } from "lucide-react"
+import { MapPin, Users, Calendar, Clock, Settings, ArrowLeft, Save, X, Mail, User } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { GroupManagement } from "@/components/group-management"
 import { LiveMapView } from "@/components/live-map-view"
 import { SendInviteModal } from "@/components/send-invite-modal"
 import { CURRENT_USER } from "@/lib/mock-data"
-import { Meetup } from "@/types/invitation"
-import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
+import { Meetup } from "@/lib/data/meetup"
+// import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
 
 interface MeetupPageProps {
   params: { id: string }
@@ -33,7 +33,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
 
   // Load meetup from localStorage
   useEffect(() => {
-    const meetups = getMeetups()
+    const meetups = CURRENT_USER.getMeetups()
     const foundMeetup = meetups.find((m) => m.id === params.id)
     if (foundMeetup) {
       setMeetup(foundMeetup)
@@ -44,8 +44,8 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     return <div className="h-screen flex items-center justify-center">Loading...</div>
   }
 
-  const isCreator = meetup.creatorId === CURRENT_USER.id
-  const canInvite = isCreator && meetup.memberCount < 5
+  const isCreator = meetup.creator === CURRENT_USER
+  const canInvite = isCreator && meetup.getMemberCount() < 5
 
   const handleSettingsClick = () => {
     setEditData({

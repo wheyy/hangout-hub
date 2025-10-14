@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { useMap } from "@/lib/map/map-provider"
 import { singaporeSpots } from "@/lib/data/hangoutspot"
+import { mockParkingSpots } from "@/lib/data/parkingspot"
 
 export function MapMarkers() {
   const { map, isLoaded } = useMap()
@@ -54,17 +55,17 @@ export function MapMarkers() {
     })
 
     // Add parking markers
-    const parkingSpots = singaporeSpots.filter((spot) => spot.parkingInfo?.available)
+    const parkingSpots = mockParkingSpots.filter((spot) => spot.isAvailable() ==true)
     parkingSpots.forEach((spot) => {
-      const parking = spot.parkingInfo!
-      const occupancyRate = parking.capacity && parking.occupied ? parking.occupied / parking.capacity : 0
+      const parking = spot
+      const occupancyRate = parking.getTotalCapacity() && parking.getOccupied() ? parking.getOccupied() / parking.getTotalCapacity() : 0
 
       let color = "#22c55e" // green (available)
       if (occupancyRate >= 0.8)
         color = "#ef4444" // red (full)
       else if (occupancyRate >= 0.5)
         color = "#f59e0b" // amber (limited)
-      else if (!parking.capacity) color = "#6b7280" // gray (unknown)
+      else if (!parking.getTotalCapacity()) color = "#6b7280" // gray (unknown)
 
       const markerElement = document.createElement("div")
       markerElement.className =
@@ -73,22 +74,22 @@ export function MapMarkers() {
       markerElement.textContent = "P"
 
       map.addMarker({
-        id: `parking-${spot.id}`,
+        id: `parking-${spot.getCarparkCode()}`,
         lng: spot.coordinates[0] + 0.001, // Slight offset to avoid overlap
         lat: spot.coordinates[1] + 0.001,
         element: markerElement,
         popup: `
           <div class="p-2 min-w-48">
             <h3 class="font-semibold text-sm">${spot.name}</h3>
-            <p class="text-xs text-gray-600 mb-2">${parking.type} parking</p>
+            <p class="text-xs text-gray-600 mb-2">${parking.getParkingType()} parking</p>
             ${
-              parking.capacity && parking.occupied
-                ? `<p class="text-xs"><span class="font-medium">${parking.capacity - parking.occupied}/${
-                    parking.capacity
+              parking.getTotalCapacity() && parking.getOccupied()
+                ? `<p class="text-xs"><span class="font-medium">${parking.getTotalCapacity() - parking.getOccupied()}/${
+                    parking.getTotalCapacity()
                   }</span> spaces available</p>`
                 : ""
             }
-            ${parking.pricePerHour ? `<p class="text-xs">$${parking.pricePerHour}/hour</p>` : ""}
+            ${parking.getRate() ? `<p class="text-xs">$${parking.getRate()}/hour</p>` : ""}
           </div>
         `,
         type: "parking",

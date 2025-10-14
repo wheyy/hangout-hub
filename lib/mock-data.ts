@@ -1,22 +1,39 @@
-import { User, Invitation, Meetup } from "@/types/invitation"
+import { Invitation } from "@/lib/data/invitation"
+import { User } from "@/lib/data/user"
 
-// Mock current user (the logged-in user)
-export const CURRENT_USER: User = {
-  id: "user-1",
-  name: "Alex Chen",
-  email: "alex.chen@example.com",
-}
+// ✅ Mock current user (the logged-in user)
+export const CURRENT_USER: User = new User(
+  "u001",
+  "Alice Johnson",
+  "alice.johnson@example.com",
+  [-122.4194, 37.7749] // San Francisco, CA
+)
 
-// Mock list of all users in the system
+// ✅ Mock list of all users in the system
 export const MOCK_USERS: User[] = [
-  { id: "user-1", name: "Alex Chen", email: "alex.chen@example.com" },
-  { id: "user-2", name: "Sarah Johnson", email: "sarah.j@example.com" },
-  { id: "user-3", name: "Michael Lee", email: "michael.lee@example.com" },
-  { id: "user-4", name: "Emma Wilson", email: "emma.w@example.com" },
-  { id: "user-5", name: "David Brown", email: "david.brown@example.com" },
-  { id: "user-6", name: "Lisa Martinez", email: "lisa.m@example.com" },
-  { id: "user-7", name: "James Taylor", email: "james.t@example.com" },
-  { id: "user-8", name: "Olivia Davis", email: "olivia.d@example.com" },
-  { id: "user-9", name: "Ryan Anderson", email: "ryan.a@example.com" },
-  { id: "user-10", name: "Sophie Chen", email: "sophie.c@example.com" },
+  CURRENT_USER,
+  new User(
+      "u002",
+      "Bob Smith",
+      "bob.smith@example.com",
+      [-73.935242, 40.73061] // New York, NY
+  ),
+  new User(
+      "u003",
+      "Charlie Davis",
+      "charlie.davis@example.com",
+      [-118.2437, 34.0522] // Los Angeles, CA
+  ),
+  new User(
+      "u004",
+      "Diana Nguyen",
+      "diana.nguyen@example.com",
+      [2.3522, 48.8566] // Paris, France
+  ),
+  new User(
+      "u005",
+      "Ethan Patel",
+      "ethan.patel@example.com",
+      [139.6917, 35.6895] // Tokyo, Japan
+  )
 ]
