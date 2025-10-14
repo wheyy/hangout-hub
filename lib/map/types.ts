@@ -18,6 +18,7 @@ export interface MapAdapter {
 export interface MapOptions {
   center: [number, number]
   zoom: number
+  mapId?: string;
   style?: string
   interactive?: boolean
   scrollZoom?: boolean

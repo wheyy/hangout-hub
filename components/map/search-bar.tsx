@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -31,6 +31,7 @@ export function SearchBar() {
   const [isSearching, setIsSearching] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
+  
   const [filters, setFilters] = useState<FilterChip[]>([
     { id: "price", label: "Price", active: false },
     { id: "rating", label: "Rating 4+", active: false },

@@ -12,18 +12,28 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Nav } from "react-day-picker"
 import { Navbar } from "@/components/navbar"
 
+import { useMemo } from "react"
+import { APIProvider } from "@vis.gl/react-google-maps"
+
 export default function HomePage() {
   const isMobile = useIsMobile()
 
-  const mapOptions = {
+  const libraries = useMemo(() => ['places'], []);
+
+  const mapOptions = useMemo(() => ({
     center: [103.8198, 1.3521] as [number, number], // Singapore center
     zoom: 11,
-  }
+    mapId: process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID!,
+  }), []);
 
   return (
+    <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!}
+    libraries={libraries}
+    >
     <div className="h-screen w-full overflow-hidden">
       <Navbar/>
-      <MapProviderComponent provider="mock" options={mapOptions} className="relative">
+      {/* <MapProviderComponent provider="mock" options={mapOptions} className="relative"> */}
+      <MapProviderComponent provider="google" options={mapOptions} className="relative">
         <MapMarkers />
 
         {/* Map Controls */}
@@ -47,5 +57,6 @@ export default function HomePage() {
         <CreateMeetupFAB />
       </MapProviderComponent>
     </div>
-  )
+    </APIProvider>
+  );
 }

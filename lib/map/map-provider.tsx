@@ -4,7 +4,7 @@ import type React from "react"
 
 import { createContext, useContext, useEffect, useRef, useState } from "react"
 import type { MapAdapter, MapOptions, MapProvider } from "./types"
-import {APIProvider} from '@vis.gl/react-google-maps';
+import { useApiIsLoaded } from '@vis.gl/react-google-maps';
 import { MockMapAdapter } from "./adapters/mock-map"
 import { GoogleMapAdapter } from "./adapters/google-map-adapter";
 
@@ -42,8 +42,10 @@ export function MapProviderComponent({ children, provider = "mock", options, cla
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isApiLoaded = useApiIsLoaded();
+
   useEffect(() => {
-    if (!containerRef.current) return
+    if (!containerRef.current || !isApiLoaded) return
 
     const initializeMap = async () => {
       try {
@@ -54,8 +56,9 @@ export function MapProviderComponent({ children, provider = "mock", options, cla
         switch (provider) {
           case "google":
             // TODO: Implement Google Maps adapter
-            throw new Error("Google Maps adapter not implemented yet")
-            // adapter = new GoogleMapAdapter();
+            adapter = new GoogleMapAdapter()
+            break
+            // throw new Error("Google Maps adapter not implemented yet")
           default:
             adapter = new MockMapAdapter()
         }
@@ -76,13 +79,13 @@ export function MapProviderComponent({ children, provider = "mock", options, cla
         map.destroy()
       }
     }
-  }, [provider, options])
+  }, [provider, options, isApiLoaded])
 
   return (
     <MapContext.Provider value={{ map, isLoaded, error }}>
-      <div className={`map-container ${className}`}>
-        <div ref={containerRef} className="absolute inset-0" />
-        {children}
+      <div className={`map-container ${className}`} ref={containerRef}>
+        {/* <div ref={containerRef} className="absolute inset-0" /> */}
+        {isLoaded && children}
       </div>
     </MapContext.Provider>
   )
