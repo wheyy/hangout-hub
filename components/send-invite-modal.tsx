@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mail, X, Send, Search, Check } from "lucide-react"
-import { MOCK_USERS, CURRENT_USER } from "@/lib/mock-data"
+import { MOCK_USERS, useUserStore } from "@/lib/mock-data"
 import { Meetup } from "@/lib/data/meetup"
 import { User } from "@/lib/data/user"
 import { Invitation } from "@/lib/data/invitation"
@@ -22,7 +22,8 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedUsers, setSelectedUsers] = useState<User[]>([])
   const [showSuccess, setShowSuccess] = useState(false)
-
+  const CURRENT_USER = useUserStore((s) => s.user);
+  
   // Filter users: exclude current user, existing members, and apply search
   const availableUsers = MOCK_USERS.filter((user) => {
     if (user.id === CURRENT_USER.id) return false // Exclude self

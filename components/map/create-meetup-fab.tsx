@@ -28,9 +28,7 @@ export function CreateMeetupFAB() {
         <Plus className="w-6 h-6" />
       </Button>
 
-      {showModal && <CreateMeetupModal isOpen={showModal} onClose={() => setShowModal(false)} 
-      // onSessionCreated={handleSessionCreated} 
-      />}
+      {showModal && <CreateMeetupModal isOpen={showModal} onClose={() => setShowModal(false)} onCreated={()=> setShowModal(false)} />}
     </>
   )
 }

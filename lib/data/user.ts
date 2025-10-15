@@ -3,30 +3,33 @@ import { Meetup } from "./meetup"
 
 export class User {
 
-    private meetups: Meetup[] = []
-    
-
+    private meetups: Meetup[] = [];
+    public notifyUpdate?: () => void; // optional callback injected by Zustand
+  
     constructor(
-        public id: string,
-        public name: string,
-        public email: string,
-        public currentLocation: [longitude: number, latitude: number] | null,
-    ) {
-        this.meetups = []
-    }
-
+      public id: string,
+      public name: string,
+      public email: string,
+      public currentLocation: [longitude: number, latitude: number] | null,
+    ) {}
+  
     addMeetup(meetup: Meetup): void {
-        if (!this.meetups.find(m => m.id === meetup.id)) {
-            this.meetups.push(meetup)
-        }
+      if (!this.meetups.find((m) => m.id === meetup.id)) {
+        this.meetups.push(meetup);
+        console.log("Meetup added to user meetups.");
+        this.notifyUpdate?.(); // <-- tell Zustand to refresh UI
+      } else {
+        console.log("Meetup already exists in user's meetups.");
+      }
     }
-
+  
     removeMeetup(meetup: Meetup): void {
-        this.meetups = this.meetups.filter(m => m.id !== meetup.id)
+      this.meetups = this.meetups.filter((m) => m.id !== meetup.id);
+      this.notifyUpdate?.(); // trigger update
     }
-
+  
     getMeetups(): Array<Meetup> {
-        return this.meetups
+      return this.meetups;
     }
 
     getUsername(): string {

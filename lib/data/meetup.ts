@@ -15,10 +15,11 @@ export class Meetup {
         public creator: User
     ) {
         this.members.push(creator) // Creator is automatically a member
-        this.creator.addMeetup(this)
+        creator.addMeetup(this)
+        console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
 
-    static saveMeetup(meetup: Meetup): boolean {
+    static saveMeetupToFirestore(meetup: Meetup): boolean {
         // Placeholder for saving to a database or external storage
         try {
             
@@ -56,6 +57,37 @@ export class Meetup {
         return this.members.length
     }
 
+    getTitle(): string {
+        return this.title
+    }
+
+    getDateTime(): Date {
+        return this.dateTime
+    }
+
+    getDateString(): string {
+        return this.dateTime.toLocaleDateString()
+    }
+
+    getTimeString(): string {
+        return this.dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
+
+    tempGetDestination(): string {
+        return this.destination
+    }
+
+    getStatus(): "active" | "completed" {
+        const now = new Date()
+        return now < this.dateTime ? "active" : "completed"
+    }
+
+    updateDetails(newTitle: string, newDateTime: Date, newDestination: string): boolean {
+        if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.tempUpdateDestination(newDestination)) {
+            return true
+        }
+        return false
+    }
     updateDateTime(newDateTime: Date): boolean {
         this.dateTime = newDateTime
         return true
@@ -73,6 +105,11 @@ export class Meetup {
     //     this.destination = newHangoutSpot
     //     return true
     // }
+
+    tempUpdateDestination(newDestination: string): boolean {
+        this.destination = newDestination
+        return true
+    }
 
     updateTitle(newTitle: string): boolean {
         this.title = newTitle

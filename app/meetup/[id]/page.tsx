@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { MapPin, Users, Calendar, Clock, Settings, ArrowLeft, Save, X, Mail, User } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { GroupManagement } from "@/components/group-management"
 import { LiveMapView } from "@/components/live-map-view"
 import { SendInviteModal } from "@/components/send-invite-modal"
-import { CURRENT_USER } from "@/lib/mock-data"
 import { Meetup } from "@/lib/data/meetup"
+import { useUserStore } from "@/lib/mock-data"
+import { useRouter } from "next/navigation"
 // import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
 
 interface MeetupPageProps {
@@ -28,56 +29,57 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     date: "",
     time: "",
   })
-
+  const CURRENT_USER = useUserStore((s) => s.user);
   const [meetup, setMeetup] = useState<Meetup | null>(null)
+  const router = useRouter();
 
   // Load meetup from localStorage
   useEffect(() => {
     const meetups = CURRENT_USER.getMeetups()
     const foundMeetup = meetups.find((m) => m.id === params.id)
     if (foundMeetup) {
-      setMeetup(foundMeetup)
+      setMeetup(foundMeetup) 
     }
   }, [params.id])
 
   if (!meetup) {
-    return <div className="h-screen flex items-center justify-center">Loading...</div>
+      return (
+        <div className="h-screen flex items-center justify-center">Meetup Not Found
+        <button onClick={() => router.push('/meetups')}>Go Back</button>
+        </div>
+      )
   }
 
-  const isCreator = meetup.creator === CURRENT_USER
+  const isCreator = meetup.creator.getId() === CURRENT_USER.getId()
   const canInvite = isCreator && meetup.getMemberCount() < 5
 
   const handleSettingsClick = () => {
     setEditData({
       title: meetup.title,
       destination: meetup.destination,
-      date: meetup.date,
-      time: meetup.time,
+      date: meetup.dateTime.toISOString().split("T")[0], // "YYYY-MM-DD"
+      time: meetup.dateTime.toTimeString().split(" ")[0].slice(0, 5), // "HH:mm"
     })
     setIsEditing(true)
   }
 
   const handleSaveChanges = () => {
-    const meetups = getMeetups()
-    const updatedMeetups = meetups.map((m) =>
-      m.id === meetup.id
-        ? {
-            ...m,
-            title: editData.title,
-            destination: editData.destination,
-            date: editData.date,
-            time: editData.time,
-          }
-        : m
-    )
-    saveMeetups(updatedMeetups)
-    setMeetup({
-      ...meetup,
-      title: editData.title,
-      destination: editData.destination,
-      date: editData.date,
-      time: editData.time,
-    })
+    const [year, month, day] = editData.date.split("-").map(Number)   // "YYYY-MM-DD"
+    const [hour, minute]      = editData.time.split(":").map(Number)   // "HH:mm"    meetup.updateDetails(editData.title, editData.destination, editData.date, editData.time)
+    
+    meetup.updateDetails(editData.title, new Date(year, month - 1, day, hour, minute), editData.destination)
+    // saveMeetups(updatedMeetups)
+    // setMeetup({
+    //   ...meetup,
+    //   title: editData.title,
+    //   destination: editData.destination,
+    //   date: editData.date,
+    //   time: editData.time,
+    // })
+
+    // Update the state with the modified meetup object
+    setMeetup(meetup);
+
     setIsEditing(false)
   }
 
@@ -226,7 +228,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
           <div className="h-full overflow-y-auto p-4">
             <GroupManagement
               meetupId={meetup.id}
-              isActive={meetup.status === "active"}
+              isActive={meetup.getStatus() === "active"}
               onLocationShare={setIsLocationSharing}
             />
           </div>
@@ -239,15 +241,15 @@ export default function MeetupPage({ params }: MeetupPageProps) {
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              <span>{meetup.date}</span>
+              <span>{meetup.getDateString()}</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="w-4 h-4" />
-              <span>{meetup.time}</span>
+              <span>{meetup.getTimeString()}</span>
             </div>
             <div className="flex items-center gap-1">
               <Users className="w-4 h-4" />
-              <span>{meetup.memberCount}/5 members</span>
+              <span>{meetup.getMemberCount()}/10 members</span>
             </div>
           </div>
           {isCreator && (
