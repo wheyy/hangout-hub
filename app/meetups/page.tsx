@@ -14,17 +14,23 @@ import { useUserStore } from "@/lib/mock-data"
 import { getInvitations, saveInvitations, getMeetups } from "@/lib/invitation-utils"
 import { Meetup } from "@/lib/data/meetup"
 import { Invitation } from "../../lib/data/invitation"
+import { ChevronDown, ChevronUp } from "lucide-react"; // Icons for dropdown toggle
+
 
 export default function MeetupsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [meetups, setMeetups] = useState<Meetup[]>([])
   const  CURRENT_USER = useUserStore.getState().user;
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State to manage dropdown visibility
 
   // Load data from localStorage
   useEffect(() => {
-    setInvitations(getInvitations())
-    setMeetups(CURRENT_USER.getMeetups())
+    setInvitations(getInvitations())  
+    console.log("Fetching meetups for CURRENT_USER...");
+    const updatedMeetups = CURRENT_USER.getMeetups();
+    console.log("Updated meetups:", updatedMeetups);
+    setMeetups(updatedMeetups);
   }, [])
 
   // Filter invitations for current user
@@ -145,45 +151,63 @@ export default function MeetupsPage() {
                   )
               }
 
-              {pastMeetups.length > 0 && (
-                
-                <div className="mt-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-3">Past Meetups ({pastMeetups.length})</h2>
-                  <div className="space-y-3">
-                    {pastMeetups.map((meetup) => (
-                      <Link key={meetup.id} href={`/meetup/${meetup.id}`}>
-                        <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
-                              <Users className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <h3 className="font-medium text-gray-900">{meetup.title}</h3>
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <div className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  <span>{meetup.destination}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  <span>{meetup.getDateString()}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  <span>{meetup.getTimeString()}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-gray-200 text-gray-800">{meetup.getMemberCount()}/10</Badge>
-                          </div>
+{pastMeetups.length > 0 && (
+      <div className="mt-6">
+        {/* Dropdown Header */}
+        <div
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => setIsDropdownOpen((prev) => !prev)} // Toggle dropdown visibility
+        >
+          <h2 className="text-lg font-semibold text-gray-900">
+            Past Meetups ({pastMeetups.length})
+          </h2>
+          {isDropdownOpen ? (
+            <ChevronUp className="w-5 h-5 text-gray-600" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-600" />
+          )}
+        </div>
+
+        {/* Dropdown Content */}
+        {isDropdownOpen && (
+          <div className="space-y-3 mt-3">
+            {pastMeetups.map((meetup) => (
+              <Link key={meetup.id} href={`/meetup/${meetup.id}`}>
+                <div className="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-600 rounded-lg flex items-center justify-center">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{meetup.title}</h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          <span>{meetup.destination}</span>
                         </div>
-                      </Link>
-                    ))}
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>{meetup.getDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          <span>{meetup.getTimeString()}</span>
+                        </div>
+                      </div>
                     </div>
-                    </div>
-              )}                              
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-gray-200 text-gray-800">
+                      {meetup.getMemberCount()}/10
+                    </Badge>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    )}                          
               </div>
             </CardContent>
           </Card>

@@ -3,16 +3,16 @@
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { MapPin, Users, Calendar, Clock, Settings, ArrowLeft, Save, X, Mail, User } from "lucide-react"
+import { MapPin, Users, Calendar, Clock, Settings, ArrowLeft, Save, X, Mail } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect, use } from "react"
+import { useState, useEffect } from "react"
 import { GroupManagement } from "@/components/group-management"
 import { LiveMapView } from "@/components/live-map-view"
 import { SendInviteModal } from "@/components/send-invite-modal"
 import { Meetup } from "@/lib/data/meetup"
 import { useUserStore } from "@/lib/mock-data"
 import { useRouter } from "next/navigation"
-// import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
+import { DeleteMeetupModal } from "@/components/meetup/delete-meetup-modal"
 
 interface MeetupPageProps {
   params: { id: string }
@@ -23,31 +23,33 @@ export default function MeetupPage({ params }: MeetupPageProps) {
   const [isLocationSharing, setIsLocationSharing] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false) // <-- NEW
   const [editData, setEditData] = useState({
     title: "",
     destination: "",
     date: "",
     time: "",
   })
-  const CURRENT_USER = useUserStore((s) => s.user);
+  const CURRENT_USER = useUserStore((s) => s.user)
   const [meetup, setMeetup] = useState<Meetup | null>(null)
-  const router = useRouter();
+  const router = useRouter()
 
-  // Load meetup from localStorage
+  // Load meetup from store
   useEffect(() => {
     const meetups = CURRENT_USER.getMeetups()
     const foundMeetup = meetups.find((m) => m.id === params.id)
     if (foundMeetup) {
-      setMeetup(foundMeetup) 
+      setMeetup(foundMeetup)
     }
-  }, [params.id])
+  }, [params.id, CURRENT_USER])
 
   if (!meetup) {
-      return (
-        <div className="h-screen flex items-center justify-center">Meetup Not Found
-        <button onClick={() => router.push('/meetups')}>Go Back</button>
-        </div>
-      )
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Meetup Not Found
+        <button onClick={() => router.push("/meetups")}>Go Back</button>
+      </div>
+    )
   }
 
   const isCreator = meetup.creator.getId() === CURRENT_USER.getId()
@@ -64,33 +66,17 @@ export default function MeetupPage({ params }: MeetupPageProps) {
   }
 
   const handleSaveChanges = () => {
-    const [year, month, day] = editData.date.split("-").map(Number)   // "YYYY-MM-DD"
-    const [hour, minute]      = editData.time.split(":").map(Number)   // "HH:mm"    meetup.updateDetails(editData.title, editData.destination, editData.date, editData.time)
-    
+    const [year, month, day] = editData.date.split("-").map(Number)
+    const [hour, minute] = editData.time.split(":").map(Number)
+
     meetup.updateDetails(editData.title, new Date(year, month - 1, day, hour, minute), editData.destination)
-    // saveMeetups(updatedMeetups)
-    // setMeetup({
-    //   ...meetup,
-    //   title: editData.title,
-    //   destination: editData.destination,
-    //   date: editData.date,
-    //   time: editData.time,
-    // })
-
-    // Update the state with the modified meetup object
-    setMeetup(meetup);
-
+    setMeetup(meetup)
     setIsEditing(false)
   }
 
   const handleCancelEdit = () => {
     setIsEditing(false)
-    setEditData({
-      title: "",
-      destination: "",
-      date: "",
-      time: "",
-    })
+    setEditData({ title: "", destination: "", date: "", time: "" })
   }
 
   return (
@@ -109,7 +95,11 @@ export default function MeetupPage({ params }: MeetupPageProps) {
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <MapPin className="w-3 h-3" />
                 <span>{meetup.destination}</span>
-                <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
+                {meetup.getStatus() === "active" ? (
+                  <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
+                ) : (
+                  <Badge className="bg-gray-100 text-gray-800 text-xs">Completed</Badge>
+                )}
                 {isCreator && <Badge className="bg-purple-100 text-purple-800 text-xs">Creator</Badge>}
               </div>
             </div>
@@ -253,7 +243,12 @@ export default function MeetupPage({ params }: MeetupPageProps) {
             </div>
           </div>
           {isCreator && (
-            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 bg-transparent">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
+              onClick={() => setIsDeleteModalOpen(true)}   // <-- OPEN MODAL
+            >
               End Meetup
             </Button>
           )}
@@ -261,7 +256,18 @@ export default function MeetupPage({ params }: MeetupPageProps) {
       </div>
 
       {/* Send Invite Modal */}
-      <SendInviteModal isOpen={isInviteModalOpen} onClose={() => setIsInviteModalOpen(false)} meetup={meetup} />
+      <SendInviteModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        meetup={meetup}
+      />
+
+      {/* Delete Meetup Modal (NEW) */}
+      <DeleteMeetupModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        meetup={meetup}
+      />
     </div>
   )
 }
