@@ -24,9 +24,11 @@ export class User {
     }
   
     removeMeetup(meetup: Meetup): void {
-      this.meetups = this.meetups.filter((m) => m.id !== meetup.id);
-      this.notifyUpdate?.(); // trigger update
-    }
+        console.log("Before removal:", this.meetups);
+        this.meetups = this.meetups.filter((m) => m.id !== meetup.id);
+        console.log("After removal:", this.meetups);
+        this.notifyUpdate?.(); // trigger update
+      }
   
     getMeetups(): Array<Meetup> {
       return this.meetups;

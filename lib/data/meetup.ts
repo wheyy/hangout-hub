@@ -115,4 +115,21 @@ export class Meetup {
         this.title = newTitle
         return true
     }
+
+    deleteMeetup(): boolean {
+        try {
+          console.log("Deleting meetup:", this.id);
+          for (const member of this.members) {
+            console.log("Removing meetup for member:", member.getId());
+            member.removeMeetup(this);
+          }
+          this.members = [];
+          console.log(`Meetup ${this.title} deleted.`);
+          return true;
+        } catch (error) {
+          console.error("Error while deleting meetup:", error);
+          return false;
+        }
+      }
+    
 }
