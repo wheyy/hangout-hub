@@ -1,51 +1,36 @@
 "use client"
 
-import { MapProviderComponent } from "@/lib/map/map-provider"
-import { MapControls } from "@/components/map/map-controls"
-import { MapMarkers } from "@/components/map/map-markers"
-import { SearchBar } from "@/components/map/search-bar"
-import { ExploreDrawer } from "@/components/map/explore-drawer"
-import { ParkingDrawer } from "@/components/map/parking-drawer"
-import { BottomSheet } from "@/components/map/bottom-sheet"
-import { CreateMeetupFAB } from "@/components/map/create-meetup-fab"
-import { useIsMobile } from "@/hooks/use-mobile"
-import { Nav } from "react-day-picker"
+import { MapProviderComponent, useMap } from "@/lib/map/map-provider"
 import { Navbar } from "@/components/navbar"
 
-export default function HomePage() {
-  const isMobile = useIsMobile()
+function MapInterface() {
+  const { isLoaded } = useMap()
 
+  return (
+    <>
+      {isLoaded && (
+        <div className="absolute bottom-4 right-4 z-10 bg-white px-3 py-2 rounded-lg shadow-lg text-xs text-gray-600">
+          Map ready ✓
+        </div>
+      )}
+    </>
+  )
+}
+
+export default function HomePage() {
   const mapOptions = {
-    center: [103.8198, 1.3521] as [number, number], // Singapore center
+    center: [103.8198, 1.3521] as [number, number],
     zoom: 11,
   }
 
   return (
-    <div className="h-screen w-full overflow-hidden">
-      <Navbar/>
-      <MapProviderComponent provider="mock" options={mapOptions} className="relative">
-        <MapMarkers />
-
-        {/* Map Controls */}
-        <MapControls />
-
-        {/* Search Bar - Always visible at top */}
-        <SearchBar />
-
-        {/* Desktop Layout */}
-        {!isMobile && (
-          <>
-            <ExploreDrawer />
-            <ParkingDrawer />
-          </>
-        )}
-
-        {/* Mobile Layout */}
-        {isMobile && <BottomSheet />}
-
-        {/* Create Meetup FAB */}
-        <CreateMeetupFAB />
-      </MapProviderComponent>
+    <div className="h-screen w-full overflow-hidden flex flex-col">
+      <Navbar />
+      <div className="flex-1 relative">
+        <MapProviderComponent options={mapOptions} className="absolute inset-0">
+          <MapInterface />
+        </MapProviderComponent>
+      </div>
     </div>
   )
 }
