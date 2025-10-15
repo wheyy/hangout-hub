@@ -9,6 +9,7 @@ export interface MarkerOptions {
   title?: string
   popup?: string
   onClick?: () => void
+  isSelected?: boolean
 }
 
 export interface BoundaryOptions {

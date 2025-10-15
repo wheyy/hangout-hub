@@ -1,10 +1,13 @@
 import maplibregl from "maplibre-gl"
 import type { MapOptions, MarkerOptions, BoundaryOptions, RouteOptions } from "./types"
+import { createSearchPinElement, createHangoutSpotPinElement } from "./pin-icons"
 
 export class MapLibreMap {
   private map: maplibregl.Map | null = null
   private markers: Map<string, maplibregl.Marker> = new Map()
   private layers: Set<string> = new Set()
+  private searchPin: maplibregl.Marker | null = null
+  private searchPinCoordinates: [number, number] | null = null
 
   async initialize(container: HTMLElement, options: MapOptions): Promise<void> {
     this.map = new maplibregl.Map({
@@ -87,34 +90,12 @@ export class MapLibreMap {
       this.removeMarker(options.id)
     }
 
-    const el = document.createElement("div")
-    el.className = "map-marker"
-    el.style.width = "32px"
-    el.style.height = "32px"
-    el.style.borderRadius = "50%"
-    el.style.backgroundColor = "#ef4444"
-    el.style.border = "2px solid white"
-    el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)"
-    el.style.cursor = "pointer"
+    const el = createHangoutSpotPinElement(options.title, options.isSelected || false)
 
-    if (options.title) {
-      const label = document.createElement("div")
-      label.textContent = options.title
-      label.style.position = "absolute"
-      label.style.left = "40px"
-      label.style.top = "50%"
-      label.style.transform = "translateY(-50%)"
-      label.style.backgroundColor = "white"
-      label.style.padding = "4px 8px"
-      label.style.borderRadius = "4px"
-      label.style.fontSize = "12px"
-      label.style.fontWeight = "500"
-      label.style.whiteSpace = "nowrap"
-      label.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)"
-      el.appendChild(label)
-    }
-
-    const marker = new maplibregl.Marker({ element: el })
+    const marker = new maplibregl.Marker({ 
+      element: el,
+      anchor: "center"
+    })
       .setLngLat(options.coordinates)
       .addTo(this.map)
 
@@ -122,12 +103,28 @@ export class MapLibreMap {
       el.addEventListener("click", options.onClick)
     }
 
-    if (options.popup) {
-      const popup = new maplibregl.Popup({ offset: 25 }).setHTML(options.popup)
-      marker.setPopup(popup)
-    }
-
     this.markers.set(options.id, marker)
+  }
+
+  updateMarkerSelection(id: string, isSelected: boolean): void {
+    const marker = this.markers.get(id)
+    if (!marker) return
+    
+    const el = marker.getElement()
+    const circle = el.querySelector(".pin-circle") as HTMLElement
+    if (!circle) return
+    
+    if (isSelected) {
+      el.style.zIndex = "150"
+      circle.style.backgroundColor = "#F97316"
+      circle.style.border = "3px solid white"
+      circle.style.boxShadow = "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)"
+    } else {
+      el.style.zIndex = "50"
+      circle.style.backgroundColor = "#EF4444"
+      circle.style.border = "2px solid white"
+      circle.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)"
+    }
   }
 
   removeMarker(id: string): void {
@@ -251,8 +248,203 @@ export class MapLibreMap {
     this.layers.delete(id)
   }
 
+  addSearchPin(
+    lng: number,
+    lat: number,
+    onDragEnd: (coords: [number, number]) => void
+  ): void {
+    if (!this.map) return
+
+    this.removeSearchPin()
+
+    const el = createSearchPinElement()
+    this.searchPinCoordinates = [lng, lat]
+
+    this.searchPin = new maplibregl.Marker({
+      element: el,
+      draggable: true,
+      anchor: "bottom"
+    })
+      .setLngLat([lng, lat])
+      .addTo(this.map)
+
+    let isDragging = false
+
+    el.addEventListener("mousedown", () => {
+      el.style.cursor = "grabbing"
+      isDragging = true
+      this.setRadiusOpacity(0.5)
+    })
+
+    el.addEventListener("mouseup", () => {
+      el.style.cursor = "grab"
+      isDragging = false
+      this.setRadiusOpacity(0.1)
+    })
+
+    this.searchPin.on("drag", () => {
+      if (!this.searchPin) return
+      const lngLat = this.searchPin.getLngLat()
+      this.searchPinCoordinates = [lngLat.lng, lngLat.lat]
+      this.updateRadiusCircle(lngLat.lng, lngLat.lat)
+    })
+
+    this.searchPin.on("dragend", () => {
+      if (!this.searchPin) return
+      const lngLat = this.searchPin.getLngLat()
+      this.searchPinCoordinates = [lngLat.lng, lngLat.lat]
+      setTimeout(() => this.setRadiusOpacity(0.1), 100)
+      onDragEnd([lngLat.lng, lngLat.lat])
+    })
+
+    this.addRadiusCircle(lng, lat, 500)
+  }
+
+  addRadiusCircle(lng: number, lat: number, radiusMeters: number): void {
+    if (!this.map) return
+
+    const radiusId = "search-radius"
+    
+    if (this.map.getSource(radiusId)) {
+      this.removeRadiusCircle()
+    }
+
+    const points = 64
+    const coords: [number, number][] = []
+    const distanceX = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180))
+    const distanceY = radiusMeters / 110574
+
+    for (let i = 0; i < points; i++) {
+      const theta = (i / points) * (2 * Math.PI)
+      const x = distanceX * Math.cos(theta)
+      const y = distanceY * Math.sin(theta)
+      coords.push([lng + x, lat + y])
+    }
+    coords.push(coords[0])
+
+    this.map.addSource(radiusId, {
+      type: "geojson",
+      data: {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "Polygon",
+          coordinates: [coords],
+        },
+      },
+    })
+
+    this.map.addLayer({
+      id: `${radiusId}-fill`,
+      type: "fill",
+      source: radiusId,
+      paint: {
+        "fill-color": "#9CA3AF",
+        "fill-opacity": 0.1,
+      },
+    })
+
+    this.map.addLayer({
+      id: `${radiusId}-outline`,
+      type: "line",
+      source: radiusId,
+      paint: {
+        "line-color": "#9CA3AF",
+        "line-width": 2,
+      },
+    })
+
+    this.layers.add(`${radiusId}-fill`)
+    this.layers.add(`${radiusId}-outline`)
+  }
+
+  updateRadiusCircle(lng: number, lat: number): void {
+    if (!this.map) return
+
+    const radiusId = "search-radius"
+    const source = this.map.getSource(radiusId) as maplibregl.GeoJSONSource
+
+    if (!source) return
+
+    const radiusMeters = 500
+    const points = 64
+    const coords: [number, number][] = []
+    const distanceX = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180))
+    const distanceY = radiusMeters / 110574
+
+    for (let i = 0; i < points; i++) {
+      const theta = (i / points) * (2 * Math.PI)
+      const x = distanceX * Math.cos(theta)
+      const y = distanceY * Math.sin(theta)
+      coords.push([lng + x, lat + y])
+    }
+    coords.push(coords[0])
+
+    source.setData({
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "Polygon",
+        coordinates: [coords],
+      },
+    })
+  }
+
+  setRadiusOpacity(opacity: number): void {
+    if (!this.map) return
+    
+    const fillId = "search-radius-fill"
+    if (this.map.getLayer(fillId)) {
+      this.map.setPaintProperty(fillId, "fill-opacity", opacity)
+    }
+  }
+
+  removeRadiusCircle(): void {
+    if (!this.map) return
+
+    const radiusId = "search-radius"
+    const fillId = `${radiusId}-fill`
+    const outlineId = `${radiusId}-outline`
+
+    if (this.map.getLayer(fillId)) this.map.removeLayer(fillId)
+    if (this.map.getLayer(outlineId)) this.map.removeLayer(outlineId)
+    if (this.map.getSource(radiusId)) this.map.removeSource(radiusId)
+
+    this.layers.delete(fillId)
+    this.layers.delete(outlineId)
+  }
+
+  removeSearchPin(): void {
+    if (this.searchPin) {
+      this.searchPin.remove()
+      this.searchPin = null
+      this.searchPinCoordinates = null
+    }
+    this.removeRadiusCircle()
+  }
+
+  fitCircleBounds(lng: number, lat: number, radiusMeters: number): void {
+    if (!this.map) return
+
+    const distanceX = radiusMeters / (111320 * Math.cos((lat * Math.PI) / 180))
+    const distanceY = radiusMeters / 110574
+
+    const bounds: [number, number, number, number] = [
+      lng - distanceX,
+      lat - distanceY,
+      lng + distanceX,
+      lat + distanceY,
+    ]
+
+    this.map.fitBounds(bounds, {
+      padding: 80,
+      duration: 1000,
+    })
+  }
+
   clearAll(): void {
     this.clearMarkers()
+    this.removeSearchPin()
     this.layers.forEach((layerId) => {
       if (this.map?.getLayer(layerId)) {
         this.map.removeLayer(layerId)

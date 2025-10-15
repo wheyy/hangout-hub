@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { MapProviderComponent, useMap } from "@/lib/map/map-provider"
 import { Navbar } from "@/components/navbar"
 import { MapSearchBar } from "@/components/map/map-search-bar"
@@ -18,93 +18,39 @@ function MapInterface() {
   const [selectedSpot, setSelectedSpot] = useState<HangoutSpot | null>(null)
   const [hangoutDrawerOpen, setHangoutDrawerOpen] = useState(false)
   const [parkingDrawerOpen, setParkingDrawerOpen] = useState(false)
+  const [dragDebounceTimer, setDragDebounceTimer] = useState<NodeJS.Timeout | null>(null)
+  const [searchBarValue, setSearchBarValue] = useState("")
 
-  const handleSearch = async (result: PlaceSearchResult, isArea: boolean) => {
-    if (!map || !isLoaded) return
+  useEffect(() => {
+    if (!map) return
+
+    spots.forEach((spot) => {
+      map.updateMarkerSelection(`spot-${spot.id}`, selectedSpot?.id === spot.id)
+    })
+  }, [selectedSpot, spots, map])
+
+  const performAreaSearch = async (lng: number, lat: number) => {
+    if (!map) return
 
     setLoading(true)
     setError(null)
-    setSelectedSpot(null)
-    setHangoutDrawerOpen(true)
 
     try {
-      const { lat, lng } = result.geometry.location
-
-      map.clearAll()
-
-      if (isArea && result.geometry.viewport) {
-        const { northeast, southwest } = result.geometry.viewport
-        
-        map.addBoundary({
-          id: "search-boundary",
-          bounds: {
-            northeast: { lat: northeast.lat, lng: northeast.lng },
-            southwest: { lat: southwest.lat, lng: southwest.lng }
-          }
-        })
-
+      const fetchedSpots = await GooglePlacesService.searchNearbyInArea([lng, lat], 500)
+      
+      setSpots(fetchedSpots)
+      
+      map.clearMarkers()
+      fetchedSpots.forEach((spot) => {
         map.addMarker({
-          id: "area-center",
-          coordinates: [lng, lat],
-          title: result.name
+          id: `spot-${spot.id}`,
+          coordinates: spot.coordinates,
+          title: spot.name,
+          onClick: () => handleCardClick(spot),
         })
-
-        const bounds: [number, number, number, number] = [
-          southwest.lng,
-          southwest.lat,
-          northeast.lng,
-          northeast.lat
-        ]
-        map.fitBounds(bounds)
-
-        const centerLng = (northeast.lng + southwest.lng) / 2
-        const centerLat = (northeast.lat + southwest.lat) / 2
-        const radiusLat = (northeast.lat - southwest.lat) / 2
-        const radiusLng = (northeast.lng - southwest.lng) / 2
-        const radius = Math.max(radiusLat, radiusLng) * 111000
-
-        const fetchedSpots = await GooglePlacesService.searchNearbyInArea(
-          [centerLng, centerLat],
-          Math.min(radius, 5000)
-        )
-
-        setSpots(fetchedSpots)
-
-        fetchedSpots.forEach((spot) => {
-          map.addMarker({
-            id: `spot-${spot.id}`,
-            coordinates: spot.coordinates,
-            title: spot.name,
-            onClick: () => handleCardClick(spot)
-          })
-        })
-      } else {
-        map.addMarker({
-          id: "place-marker",
-          coordinates: [lng, lat],
-          title: result.name
-        })
-
-        map.setCenter(lng, lat, 15)
-
-        const fetchedSpots = await GooglePlacesService.searchNearbyInArea(
-          [lng, lat],
-          1000
-        )
-
-        setSpots(fetchedSpots)
-
-        fetchedSpots.forEach((spot) => {
-          map.addMarker({
-            id: `spot-${spot.id}`,
-            coordinates: spot.coordinates,
-            title: spot.name,
-            onClick: () => handleCardClick(spot)
-          })
-        })
-      }
+      })
     } catch (err) {
-      console.error("Search error:", err)
+      console.error("Area search error:", err)
       setError(err instanceof Error ? err.message : "Failed to search for places")
       setSpots([])
     } finally {
@@ -112,11 +58,72 @@ function MapInterface() {
     }
   }
 
+  const handleSearchPinDragEnd = (coords: [number, number]) => {
+    if (dragDebounceTimer) {
+      clearTimeout(dragDebounceTimer)
+    }
+
+    setSearchBarValue(`${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}`)
+
+    const timer = setTimeout(() => {
+      performAreaSearch(coords[0], coords[1])
+    }, 1000)
+
+    setDragDebounceTimer(timer)
+  }
+
+  const handleSearch = async (result: PlaceSearchResult, isArea: boolean) => {
+    if (!map || !isLoaded) return
+
+    map.clearAll()
+    setSpots([])
+    setSelectedSpot(null)
+    setError(null)
+    setHangoutDrawerOpen(true)
+    setSearchBarValue(result.name)
+
+    const { lat, lng } = result.geometry.location
+
+    if (isArea) {
+      map.addSearchPin(lng, lat, handleSearchPinDragEnd)
+      map.fitCircleBounds(lng, lat, 500)
+      
+      await performAreaSearch(lng, lat)
+    } else {
+      setLoading(true)
+      
+      try {
+        const spot = await GooglePlacesService.getPlaceDetails(result.placeId)
+        
+        if (spot) {
+          setSpots([spot])
+          setSelectedSpot(spot)
+          
+          map.addMarker({
+            id: `spot-${spot.id}`,
+            coordinates: spot.coordinates,
+            onClick: () => handleCardClick(spot),
+            isSelected: true,
+          })
+          
+          map.setCenter(spot.coordinates[0], spot.coordinates[1], 17)
+        } else {
+          setError("Could not load place details")
+        }
+      } catch (err) {
+        console.error("Specific place search error:", err)
+        setError(err instanceof Error ? err.message : "Failed to load place")
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
+
   const handleCardClick = (spot: HangoutSpot) => {
     if (!map) return
     
     setSelectedSpot(spot)
-    map.setCenter(spot.coordinates[0], spot.coordinates[1], 16)
+    map.setCenter(spot.coordinates[0], spot.coordinates[1], 17)
   }
 
   const handleBack = () => {
@@ -139,7 +146,11 @@ function MapInterface() {
 
   return (
     <>
-      <MapSearchBar onSearch={handleSearch} />
+      <MapSearchBar 
+        onSearch={handleSearch}
+        value={searchBarValue}
+        onValueChange={setSearchBarValue}
+      />
       <HangoutDrawer
         spots={spots}
         loading={loading}

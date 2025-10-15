@@ -25,8 +25,8 @@ export function HangoutDrawer({
 }: HangoutDrawerProps) {
   return (
     <div
-      className={`fixed left-0 top-14 bottom-0 z-[5] bg-white border-r border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
-        isOpen ? "translate-x-0" : "-translate-x-[300px]"
+      className={`fixed left-0 top-14 bottom-0 z-[1000] bg-white border-r border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
       style={{ width: "300px" }}
     >

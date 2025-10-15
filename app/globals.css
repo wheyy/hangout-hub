@@ -171,4 +171,12 @@
   .maplibregl-ctrl-group button:last-child {
     border-right: none !important;
   }
+
+  .cursor-grab {
+    cursor: grab;
+  }
+
+  .cursor-grabbing {
+    cursor: grabbing;
+  }
 }

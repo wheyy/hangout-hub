@@ -6,6 +6,8 @@ import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-pl
 
 interface SearchBarProps {
   onSearch: (result: PlaceSearchResult, isArea: boolean) => void
+  value?: string
+  onValueChange?: (value: string) => void
 }
 
 interface Suggestion {
@@ -13,8 +15,11 @@ interface Suggestion {
   description: string
 }
 
-export function MapSearchBar({ onSearch }: SearchBarProps) {
-  const [query, setQuery] = useState("")
+export function MapSearchBar({ onSearch, value, onValueChange }: SearchBarProps) {
+  const [internalQuery, setInternalQuery] = useState("")
+  const query = value !== undefined ? value : internalQuery
+  const setQuery = onValueChange || setInternalQuery
+  
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -122,7 +127,7 @@ export function MapSearchBar({ onSearch }: SearchBarProps) {
   return (
     <div 
       ref={searchBarRef}
-      className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+      className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none"
       style={{ width: '500px' }}
     >
       {/* Search Input */}

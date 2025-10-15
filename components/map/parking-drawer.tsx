@@ -10,7 +10,7 @@ interface ParkingDrawerProps {
 export function ParkingDrawer({ isOpen, onToggle }: ParkingDrawerProps) {
   return (
     <div
-      className={`fixed right-0 top-14 bottom-0 z-[5] bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
+      className={`fixed right-0 top-14 bottom-0 z-[1000] bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
         isOpen ? "translate-x-0" : "translate-x-[300px]"
       }`}
       style={{ width: "300px" }}

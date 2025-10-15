@@ -15,7 +15,15 @@ const HANGOUT_CATEGORIES = [
   "amusement_park",
 ]
 
-const AREA_TYPES = ["locality", "sublocality", "neighborhood", "administrative_area_level_1", "postal_code"]
+const AREA_TYPES = [
+  "locality",
+  "sublocality",
+  "sublocality_level_1",
+  "neighborhood",
+  "administrative_area_level_1",
+  "administrative_area_level_2",
+  "postal_code",
+]
 
 export interface PlaceSearchResult {
   placeId: string
@@ -136,11 +144,14 @@ export class GooglePlacesService {
   }
 
   static isAreaSearch(types: string[]): boolean {
-    return types.some(type => AREA_TYPES.includes(type))
+    return types.some(type => AREA_TYPES.includes(type)) && 
+           !types.some(type => HANGOUT_CATEGORIES.includes(type))
   }
 
   static isSpecificPlace(types: string[]): boolean {
-    return types.some(type => HANGOUT_CATEGORIES.includes(type))
+    return types.some(type => HANGOUT_CATEGORIES.includes(type)) ||
+           types.includes("establishment") ||
+           types.includes("point_of_interest")
   }
 
   static async searchNearbyInArea(
