@@ -8,6 +8,8 @@ interface SearchBarProps {
   onSearch: (result: PlaceSearchResult, isArea: boolean) => void
   value?: string
   onValueChange?: (value: string) => void
+  showPinButton?: boolean
+  onPinButtonClick?: () => void
 }
 
 interface Suggestion {
@@ -15,7 +17,7 @@ interface Suggestion {
   description: string
 }
 
-export function MapSearchBar({ onSearch, value, onValueChange }: SearchBarProps) {
+export function MapSearchBar({ onSearch, value, onValueChange, showPinButton = false, onPinButtonClick }: SearchBarProps) {
   const [internalQuery, setInternalQuery] = useState("")
   const query = value !== undefined ? value : internalQuery
   const setQuery = onValueChange || setInternalQuery
@@ -125,13 +127,9 @@ export function MapSearchBar({ onSearch, value, onValueChange }: SearchBarProps)
   }
 
   return (
-    <div 
-      ref={searchBarRef}
-      className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-none"
-      style={{ width: '500px' }}
-    >
+    <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none flex items-start justify-center gap-2">
       {/* Search Input */}
-      <div className="relative pointer-events-auto">
+      <div ref={searchBarRef} className="relative pointer-events-auto" style={{ width: '500px' }}>
         <div className="relative flex items-center bg-white rounded-full shadow-lg border border-gray-200">
           <Search className="absolute left-4 w-5 h-5 text-gray-400" />
           
@@ -142,7 +140,7 @@ export function MapSearchBar({ onSearch, value, onValueChange }: SearchBarProps)
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            className="flex-1 pl-12 pr-12 py-3 bg-transparent rounded-full outline-none text-sm"
+            className="flex-1 pl-12 pr-12 py-3 bg-transparent rounded-full outline-none text-xs"
           />
 
           {isLoading ? (
@@ -160,7 +158,7 @@ export function MapSearchBar({ onSearch, value, onValueChange }: SearchBarProps)
 
         {/* Autocomplete Dropdown */}
         {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden pointer-events-auto">
+          <div className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden pointer-events-auto z-10">
             {suggestions.map((suggestion) => (
               <button
                 key={suggestion.placeId}
@@ -174,6 +172,25 @@ export function MapSearchBar({ onSearch, value, onValueChange }: SearchBarProps)
           </div>
         )}
       </div>
+
+      {/* Pin Button */}
+      {showPinButton && (
+        <button
+          onClick={onPinButtonClick}
+          className="pointer-events-auto flex items-center justify-center gap-2 h-[46px] px-4 bg-white rounded-md shadow-md border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 transition-all cursor-pointer text-xs font-medium text-gray-700"
+          aria-label="Use pin to search area"
+        >
+          <svg width="20" height="23" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z" 
+                  fill="#3B82F6" stroke="white" strokeWidth="3"/>
+            <g transform="translate(32, 20)">
+              <circle cx="0" cy="-2" r="7" stroke="white" strokeWidth="2.5" fill="none"/>
+              <line x1="5" y1="2.5" x2="8" y2="5.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+            </g>
+          </svg>
+          <span className="whitespace-nowrap">Use Pin to Search Area</span>
+        </button>
+      )}
     </div>
   )
 }

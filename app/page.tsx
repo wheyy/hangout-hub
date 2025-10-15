@@ -20,6 +20,7 @@ function MapInterface() {
   const [parkingDrawerOpen, setParkingDrawerOpen] = useState(false)
   const [dragDebounceTimer, setDragDebounceTimer] = useState<NodeJS.Timeout | null>(null)
   const [searchBarValue, setSearchBarValue] = useState("")
+  const [hasSearchPin, setHasSearchPin] = useState(false)
 
   useEffect(() => {
     if (!map) return
@@ -79,6 +80,7 @@ function MapInterface() {
     setSpots([])
     setSelectedSpot(null)
     setError(null)
+    setHasSearchPin(false)
     setHangoutDrawerOpen(true)
     setSearchBarValue(result.name)
 
@@ -86,6 +88,7 @@ function MapInterface() {
 
     if (isArea) {
       map.addSearchPin(lng, lat, handleSearchPinDragEnd)
+      setHasSearchPin(true)
       map.fitCircleBounds(lng, lat, 500)
       
       await performAreaSearch(lng, lat)
@@ -130,6 +133,24 @@ function MapInterface() {
     setSelectedSpot(null)
   }
 
+  const handlePinButtonClick = async () => {
+    if (!map) return
+
+    const center = map.getCenter()
+    const lng = center.lng
+    const lat = center.lat
+
+    map.addSearchPin(lng, lat, handleSearchPinDragEnd)
+    setHasSearchPin(true)
+
+    setSearchBarValue(`${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+
+    map.fitCircleBounds(lng, lat, 500)
+    
+    await performAreaSearch(lng, lat)
+    setHangoutDrawerOpen(true)
+  }
+
   const handleToggleHangoutDrawer = () => {
     setHangoutDrawerOpen(!hangoutDrawerOpen)
   }
@@ -150,6 +171,8 @@ function MapInterface() {
         onSearch={handleSearch}
         value={searchBarValue}
         onValueChange={setSearchBarValue}
+        showPinButton={!hasSearchPin}
+        onPinButtonClick={handlePinButtonClick}
       />
       <HangoutDrawer
         spots={spots}
