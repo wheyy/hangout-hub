@@ -35,7 +35,12 @@ export class MapLibreMap {
       maxZoom: 18,
     })
 
-    this.map.addControl(new maplibregl.NavigationControl(), "top-right")
+    // Add navigation controls at bottom center
+    this.map.addControl(new maplibregl.NavigationControl({
+      showCompass: true,
+      showZoom: true,
+      visualizePitch: false
+    }), "bottom-left")
 
     return new Promise((resolve) => {
       this.map!.on("load", () => {

@@ -1,121 +1,51 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { ChevronLeft, ChevronRight, MapPin, Clock, DollarSign } from "lucide-react"
-import { singaporeSpots } from "@/lib/data/hangoutspot"
+import { ChevronLeft, ChevronRight, ParkingSquare } from "lucide-react"
 
-export function ParkingDrawer() {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [showParkingLayer, setShowParkingLayer] = useState(true)
+interface ParkingDrawerProps {
+  isOpen: boolean
+  onToggle: () => void
+}
 
-  const parkingSpots = singaporeSpots.filter((spot) => spot.parkingInfo?.available)
-
-  const getAvailabilityColor = (occupied: number, capacity: number) => {
-    const percentage = (occupied / capacity) * 100
-    if (percentage >= 80) return "bg-red-100 text-red-800"
-    if (percentage >= 50) return "bg-yellow-100 text-yellow-800"
-    return "bg-green-100 text-green-800"
-  }
-
-  const getAvailabilityText = (occupied: number, capacity: number) => {
-    const available = capacity - occupied
-    const percentage = ((capacity - occupied) / capacity) * 100
-    return `${available}/${capacity} (${Math.round(percentage)}%)`
-  }
-
+export function ParkingDrawer({ isOpen, onToggle }: ParkingDrawerProps) {
   return (
     <div
-      className={`absolute right-0 top-0 bottom-0 z-10 transition-all duration-300 ${
-        isCollapsed ? "w-12" : "w-80"
-      } bg-background/95 backdrop-blur-sm border-l border-border`}
+      className={`fixed right-0 top-14 bottom-0 z-[5] bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
+        isOpen ? "translate-x-0" : "translate-x-[300px]"
+      }`}
+      style={{ width: "300px" }}
     >
-      {/* Toggle Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        className="absolute -left-6 top-1/2 transform -translate-y-1/2 w-6 h-8 p-0 bg-background border border-border rounded-l-md z-20"
+      <button
+        onClick={onToggle}
+        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-white border border-r-0 border-gray-200 rounded-l-lg px-2 py-8 hover:bg-gray-50 transition-colors shadow-md"
+        aria-label={isOpen ? "Collapse drawer" : "Expand drawer"}
       >
-        {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-      </Button>
+        {isOpen ? (
+          <ChevronRight className="w-5 h-5 text-gray-600" />
+        ) : (
+          <ChevronLeft className="w-5 h-5 text-gray-600" />
+        )}
+      </button>
 
-      {!isCollapsed && (
-        <div className="h-full flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-border">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-semibold">Parking</h2>
-              <Switch checked={showParkingLayer} onCheckedChange={setShowParkingLayer} />
+      <div className="h-full overflow-hidden flex flex-col">
+        <div className="px-4 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold">Parking Spots</h2>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <ParkingSquare className="w-8 h-8 text-gray-400" />
             </div>
-            <p className="text-sm text-muted-foreground">{parkingSpots.length} parking areas</p>
-
-            {/* Legend */}
-            <div className="flex items-center gap-4 mt-3 text-xs">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span>Available</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span>Limited</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                <span>Full</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Parking List */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {parkingSpots.map((spot) => {
-              const parking = spot.parkingInfo!
-              return (
-                <Card key={spot.id} className="cursor-pointer transition-all hover:shadow-md">
-                  <CardHeader className="p-3 pb-2">
-                    <CardTitle className="text-sm font-medium">{spot.name}</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs capitalize">
-                        {parking.type}
-                      </Badge>
-                      {parking.capacity && parking.occupied && (
-                        <Badge className={`text-xs ${getAvailabilityColor(parking.occupied, parking.capacity)}`}>
-                          {getAvailabilityText(parking.occupied, parking.capacity)}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-0">
-                    <div className="space-y-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        <span className="truncate">{spot.address}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{spot.openingHours}</span>
-                      </div>
-                      {parking.pricePerHour && (
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="w-3 h-3" />
-                          <span>${parking.pricePerHour}/hour</span>
-                        </div>
-                      )}
-                    </div>
-                    <Button variant="outline" size="sm" className="w-full mt-2 text-xs bg-transparent">
-                      Show on Map
-                    </Button>
-                  </CardContent>
-                </Card>
-              )
-            })}
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Coming Soon
+            </h3>
+            <p className="text-sm text-gray-500">
+              Parking spot search will be available soon
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

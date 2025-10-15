@@ -143,6 +143,42 @@ export class GooglePlacesService {
     return types.some(type => HANGOUT_CATEGORIES.includes(type))
   }
 
+  static async searchNearbyInArea(
+    center: [number, number],
+    radius: number
+  ): Promise<HangoutSpot[]> {
+    const [lng, lat] = center
+    const cacheKey = `nearby:${lat.toFixed(4)},${lng.toFixed(4)}:${radius}`
+    const cached = getCache<HangoutSpot[]>(cacheKey)
+    if (cached) return cached
+
+    try {
+      const response = await fetch(
+        `/api/places/nearby?lat=${lat}&lng=${lng}&radius=${radius}`
+      )
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch nearby places")
+      }
+
+      const places = await response.json()
+      const spots: HangoutSpot[] = []
+
+      for (const place of places) {
+        const spot = this.convertToHangoutSpot(place)
+        if (spot) {
+          spots.push(spot)
+        }
+      }
+
+      setCache(cacheKey, spots)
+      return spots
+    } catch (error) {
+      console.error("Error searching nearby:", error)
+      throw error
+    }
+  }
+
   private static convertToHangoutSpot(place: any): HangoutSpot | null {
     try {
       const priceLevel = place.price_level || 0
