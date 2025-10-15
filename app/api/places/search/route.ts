@@ -6,23 +6,81 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get("query")
 
+  console.log("Search API called with query:", query)
+  console.log("API Key present:", !!API_KEY)
+
   if (!query) {
     return NextResponse.json({ error: "Query parameter is required" }, { status: 400 })
   }
 
   try {
-    const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(
-      query
-    )}&inputtype=textquery&fields=place_id,name,geometry,types&key=${API_KEY}&locationbias=circle:50000@1.3521,103.8198`
+    // Using NEW Places API (Text Search)
+    const url = `https://places.googleapis.com/v1/places:searchText`
 
-    const response = await fetch(url)
+    console.log("Calling NEW Google Places API...")
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": API_KEY || "",
+        "X-Goog-FieldMask": "places.id,places.displayName,places.types,places.location,places.viewport"
+      },
+      body: JSON.stringify({
+        textQuery: query,
+        locationBias: {
+          circle: {
+            center: {
+              latitude: 1.3521,
+              longitude: 103.8198
+            },
+            radius: 50000.0
+          }
+        }
+      })
+    })
+
     const data = await response.json()
+    console.log("Google API response:", data)
 
-    if (data.status !== "OK" || !data.candidates || data.candidates.length === 0) {
+    if (response.status === 403 || data.error) {
+      console.error("API error:", data.error?.message)
+      return NextResponse.json({ 
+        error: data.error?.message || "API request denied" 
+      }, { status: 403 })
+    }
+
+    if (!data.places || data.places.length === 0) {
+      console.log("No results found")
       return NextResponse.json({ error: "No results found" }, { status: 404 })
     }
 
-    return NextResponse.json(data.candidates[0])
+    const place = data.places[0]
+    
+    // Convert to our expected format
+    const result = {
+      placeId: place.id,
+      name: place.displayName?.text || place.displayName,
+      types: place.types || [],
+      geometry: {
+        location: {
+          lat: place.location?.latitude || 0,
+          lng: place.location?.longitude || 0
+        },
+        viewport: place.viewport ? {
+          northeast: {
+            lat: place.viewport.high?.latitude || 0,
+            lng: place.viewport.high?.longitude || 0
+          },
+          southwest: {
+            lat: place.viewport.low?.latitude || 0,
+            lng: place.viewport.low?.longitude || 0
+          }
+        } : undefined
+      }
+    }
+
+    console.log("Returning result:", result.name)
+    return NextResponse.json(result)
   } catch (error) {
     console.error("Search error:", error)
     return NextResponse.json({ error: "Failed to search" }, { status: 500 })

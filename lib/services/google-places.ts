@@ -97,16 +97,15 @@ export class GooglePlacesService {
     if (cached) return cached
 
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=place_id,name,formatted_address,geometry,rating,user_ratings_total,price_level,opening_hours,photos,types&key=${API_KEY}`
+      const response = await fetch(`/api/places/details?placeId=${encodeURIComponent(placeId)}`)
 
-      const response = await fetch(url)
-      const data = await response.json()
-
-      if (data.status !== "OK" || !data.result) {
+      if (!response.ok) {
         return null
       }
 
-      const spot = await this.convertToHangoutSpot(data.result)
+      const place = await response.json()
+      const spot = this.convertToHangoutSpot(place)
+      
       if (spot) {
         setCache(cacheKey, spot)
       }
@@ -122,21 +121,14 @@ export class GooglePlacesService {
     if (!input || input.length < 2) return []
 
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(
-        input
-      )}&location=1.3521,103.8198&radius=50000&components=country:sg&key=${API_KEY}`
-
-      const response = await fetch(url)
-      const data = await response.json()
-
-      if (data.status !== "OK" || !data.predictions) {
+      const response = await fetch(`/api/places/autocomplete?input=${encodeURIComponent(input)}`)
+      
+      if (!response.ok) {
         return []
       }
 
-      return data.predictions.map((prediction: any) => ({
-        placeId: prediction.place_id,
-        description: prediction.description,
-      }))
+      const results: AutocompleteResult[] = await response.json()
+      return results
     } catch (error) {
       console.error("Error in autocomplete:", error)
       return []

@@ -9,9 +9,30 @@ export class MapLibreMap {
   async initialize(container: HTMLElement, options: MapOptions): Promise<void> {
     this.map = new maplibregl.Map({
       container,
-      style: "https://demotiles.maplibre.org/style.json",
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          }
+        },
+        layers: [
+          {
+            id: "osm",
+            type: "raster",
+            source: "osm",
+            minzoom: 0,
+            maxzoom: 19
+          }
+        ]
+      },
       center: options.center,
       zoom: options.zoom,
+      minZoom: 8,
+      maxZoom: 18,
     })
 
     this.map.addControl(new maplibregl.NavigationControl(), "top-right")
