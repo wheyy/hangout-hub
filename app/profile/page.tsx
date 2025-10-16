@@ -283,10 +283,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Users, User, Eye, EyeOff, Check, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { authService } from "@/lib/auth"
+import { AuthGuard } from "@/components/auth-guard"
+import { useRouter } from "next/navigation"
 
 export default function ProfilePage() {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
@@ -295,8 +299,8 @@ export default function ProfilePage() {
 
   // Current user data
   const [userData, setUserData] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: "",
+    email: "",
     password: "********",
   })
 
@@ -316,6 +320,20 @@ export default function ProfilePage() {
     newPassword: "",
     confirmPassword: "",
   })
+
+  useEffect(() => {
+    let mounted = true
+    authService.getCurrentUser().then((u) => {
+      if (!mounted) return
+      if (u) {
+        setUserData({ name: u.name, email: u.email, password: "********" })
+        setFormData((prev) => ({ ...prev, name: u.name, email: u.email }))
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const validateForm = () => {
     const newErrors = {
@@ -405,6 +423,16 @@ export default function ProfilePage() {
     }
   }
 
+  const handleSignOut = async () => {
+    try {
+      await authService.signOut()
+      router.push("/auth/login")
+    } catch (e) {
+      setMessage("Failed to sign out. Please try again.")
+      setMessageType("error")
+    }
+  }
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     // Clear error when user starts typing
@@ -414,6 +442,7 @@ export default function ProfilePage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
@@ -439,6 +468,9 @@ export default function ProfilePage() {
           <Button variant="ghost" size="sm" className="text-blue-600 bg-blue-50">
             <User className="w-4 h-4 mr-1" />
             Profile
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleSignOut}>
+            Sign out
           </Button>
         </div>
       </header>
@@ -600,6 +632,7 @@ export default function ProfilePage() {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   )
 }
 

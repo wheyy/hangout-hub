@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import type { PlaceCategory, PriceRange, SearchFilters } from "@/lib/types"
+import { AuthGuard } from "@/components/auth-guard"
 
 // Mock data for demonstration
 const mockPlaces = [
@@ -96,7 +97,7 @@ const priceRangeLabels = {
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
-  const [filters, setFilters] = useState<SearchFilters>({
+  const [filters, setFilters] = useState<any>({
     category: "",
     priceRange: "",
     minRating: undefined,
@@ -150,7 +151,7 @@ export default function SearchPage() {
   }, [filters])
 
   const updateFilter = (key: keyof SearchFilters, value: any) => {
-    setFilters((prev) => ({ ...prev, [key]: value }))
+    setFilters((prev: any) => ({ ...prev, [key]: value }))
   }
 
   const clearFilters = () => {
@@ -158,6 +159,7 @@ export default function SearchPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-blue-200 sticky top-0 z-50">
@@ -398,5 +400,6 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+    </AuthGuard>
   )
 }

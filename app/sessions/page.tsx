@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPin, Calendar, Users, Plus, Settings, Eye } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { AuthGuard } from "@/components/auth-guard"
 
 // Mock session data
 const mockSessions = [
@@ -124,6 +125,7 @@ export default function SessionsPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-blue-200 sticky top-0 z-50">
@@ -379,5 +381,6 @@ export default function SessionsPage() {
         </Tabs>
       </div>
     </div>
+    </AuthGuard>
   )
 }

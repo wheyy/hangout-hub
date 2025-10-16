@@ -11,6 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { MapPin, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { authService } from "@/lib/auth"
+import { AuthGuard } from "@/components/auth-guard"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -26,22 +28,17 @@ export default function LoginPage() {
     setError("")
 
     try {
-      // TODO: Implement actual authentication with Supabase
-      console.log("[v0] Login attempt:", { email })
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // For now, just redirect to search page
+      await authService.signIn(email, password)
       router.push("/search")
     } catch (err) {
-      setError("Invalid email or password. Please try again.")
+      setError(err instanceof Error ? err.message : "Invalid email or password. Please try again.")
     } finally {
       setLoading(false)
     }
   }
 
   return (
+    <AuthGuard requireAuth={false}>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
@@ -136,5 +133,6 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+    </AuthGuard>
   )
 }

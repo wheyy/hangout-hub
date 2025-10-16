@@ -9,6 +9,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { CreateMeetupModal } from "@/components/create-meetup-modal"
 import { Navbar } from "@/components/navbar"
+import { AuthGuard } from "@/components/auth-guard"
 
 export default function MeetupsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
@@ -37,6 +38,7 @@ export default function MeetupsPage() {
   // }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
@@ -175,5 +177,6 @@ export default function MeetupsPage() {
       {/* Create Meetup Modal */}
       <CreateMeetupModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
     </div>
+    </AuthGuard>
   )
 }
