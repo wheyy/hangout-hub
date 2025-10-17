@@ -28,10 +28,11 @@ export async function GET(request: NextRequest) {
               latitude: 1.3521,
               longitude: 103.8198
             },
-            radius: 50000.0
+            radius: 25000.0  // Keep 25km radius for Singapore focus
           }
         },
-        includedRegionCodes: ["SG"]
+        includedRegionCodes: ["SG"],
+        languageCode: "en"  // English results
       })
     })
 

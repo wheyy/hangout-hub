@@ -10,6 +10,68 @@ import { ErrorPopup } from "@/components/map/error-popup"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-places"
 
+// Cache for Singapore boundary data
+let singaporeBoundaryCache: any = null
+
+// Load Singapore subzone boundary
+async function loadSingaporeBoundary() {
+  if (singaporeBoundaryCache) return singaporeBoundaryCache
+  
+  try {
+    const response = await fetch('/SubZoneBoundary.geojson')
+    singaporeBoundaryCache = await response.json()
+    return singaporeBoundaryCache
+  } catch (error) {
+    console.error("Failed to load Singapore boundary:", error)
+    return null
+  }
+}
+
+// Point-in-polygon algorithm (Ray Casting)
+function pointInPolygon(point: [number, number], polygon: number[][][]): boolean {
+  const [lng, lat] = point
+  let inside = false
+
+  for (const ring of polygon) {
+    let j = ring.length - 1
+    for (let i = 0; i < ring.length; i++) {
+      const [xi, yi] = ring[i]
+      const [xj, yj] = ring[j]
+
+      const intersect = ((yi > lat) !== (yj > lat)) &&
+        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+      
+      if (intersect) inside = !inside
+      j = i
+    }
+  }
+  
+  return inside
+}
+
+// Check if point is within any Singapore subzone
+function isPointInSingapore(lat: number, lng: number, boundaryData: any): boolean {
+  if (!boundaryData || !boundaryData.features) return false
+
+  for (const feature of boundaryData.features) {
+    if (!feature.geometry) continue
+
+    if (feature.geometry.type === 'Polygon') {
+      if (pointInPolygon([lng, lat], [feature.geometry.coordinates[0]])) {
+        return true
+      }
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      for (const polygon of feature.geometry.coordinates) {
+        if (pointInPolygon([lng, lat], [polygon[0]])) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
 function MapInterface() {
   const { map, isLoaded } = useMap()
   const [spots, setSpots] = useState<HangoutSpot[]>([])
@@ -59,9 +121,21 @@ function MapInterface() {
     }
   }
 
-  const handleSearchPinDragEnd = (coords: [number, number]) => {
+  const handleSearchPinDragEnd = async (coords: [number, number]) => {
     if (dragDebounceTimer) {
       clearTimeout(dragDebounceTimer)
+    }
+
+    // Check if coordinates are within Singapore boundaries using GeoJSON
+    const [lng, lat] = coords
+    const boundaryData = await loadSingaporeBoundary()
+    const inSingapore = boundaryData
+      ? isPointInSingapore(lat, lng, boundaryData)
+      : (lat >= 1.15 && lat <= 1.50 && lng >= 103.6 && lng <= 104.05) // Fallback
+    
+    if (!inSingapore) {
+      setError("Search is outside the boundary")
+      return
     }
 
     setSearchBarValue(`${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}`)

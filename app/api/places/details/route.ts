@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       method: "GET",
       headers: {
         "X-Goog-Api-Key": API_KEY || "",
-        "X-Goog-FieldMask": "id,displayName,formattedAddress,location,rating,userRatingCount,priceLevel,currentOpeningHours,photos,types"
+        "X-Goog-FieldMask": "id,displayName,formattedAddress,location,rating,userRatingCount,priceLevel,currentOpeningHours,regularOpeningHours,photos,types"
       }
     })
 
@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
       console.error("Place details error:", data)
       return NextResponse.json({ error: "Place not found" }, { status: 404 })
     }
+
+    // const category = 
+    //   data?.primaryTypeDisplayName?.text??
+    //   data?.primaryType ??
+    //   (Array.isArray(data?.types) ? data.types[0] : "undefined")
 
     // Convert to old format for compatibility
     const result = {
@@ -45,9 +50,12 @@ export async function GET(request: NextRequest) {
       rating: data.rating || 0,
       user_ratings_total: data.userRatingCount || 0,
       price_level: data.priceLevel || 0,
-      opening_hours: data.currentOpeningHours,
+      opening_hours: data.currentOpeningHours || data.regularOpeningHours,
+      current_opening_hours: data.currentOpeningHours,
+      regular_opening_hours: data.regularOpeningHours,
       photos: data.photos,
-      types: data.types || []
+      types: data.types || [],
+      // category: category
     }
 
     return NextResponse.json(result)

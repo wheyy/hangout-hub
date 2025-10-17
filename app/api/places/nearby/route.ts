@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": API_KEY || "",
-        "X-Goog-FieldMask": "places.id,places.displayName,places.types,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.photos,places.formattedAddress"
+        "X-Goog-FieldMask": "places.id,places.displayName,places.types,places.location,places.rating,places.userRatingCount,places.priceLevel,places.currentOpeningHours,places.regularOpeningHours,places.photos,places.formattedAddress"
       },
       body: JSON.stringify({
         includedTypes: HANGOUT_CATEGORIES,
@@ -73,7 +73,9 @@ export async function GET(request: NextRequest) {
       rating: place.rating || 0,
       user_ratings_total: place.userRatingCount || 0,
       price_level: place.priceLevel || 0,
-      opening_hours: place.currentOpeningHours,
+      opening_hours: place.currentOpeningHours || place.regularOpeningHours,
+      current_opening_hours: place.currentOpeningHours,
+      regular_opening_hours: place.regularOpeningHours,
       photos: place.photos,
       formatted_address: place.formattedAddress || place.vicinity || ""
     }))

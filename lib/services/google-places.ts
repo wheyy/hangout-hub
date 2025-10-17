@@ -1,6 +1,233 @@
 import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { getCache, setCache } from "@/lib/utils/cache"
 
+// Cache for Singapore boundary data
+let singaporeBoundaryCache: any = null
+
+// Load Singapore subzone boundary
+async function loadSingaporeBoundary() {
+  if (singaporeBoundaryCache) return singaporeBoundaryCache
+  
+  try {
+    const response = await fetch('/SubZoneBoundary.geojson')
+    singaporeBoundaryCache = await response.json()
+    return singaporeBoundaryCache
+  } catch (error) {
+    console.error("Failed to load Singapore boundary:", error)
+    return null
+  }
+}
+
+// Point-in-polygon algorithm (Ray Casting)
+function pointInPolygon(point: [number, number], polygon: number[][][]): boolean {
+  const [lng, lat] = point
+  let inside = false
+
+  for (const ring of polygon) {
+    let j = ring.length - 1
+    for (let i = 0; i < ring.length; i++) {
+      const [xi, yi] = ring[i]
+      const [xj, yj] = ring[j]
+
+      const intersect = ((yi > lat) !== (yj > lat)) &&
+        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
+      
+      if (intersect) inside = !inside
+      j = i
+    }
+  }
+  
+  return inside
+}
+
+// Check if point is within any Singapore subzone
+function isPointInSingapore(lat: number, lng: number, boundaryData: any): boolean {
+  if (!boundaryData || !boundaryData.features) return false
+
+  for (const feature of boundaryData.features) {
+    if (!feature.geometry) continue
+
+    if (feature.geometry.type === 'Polygon') {
+      if (pointInPolygon([lng, lat], [feature.geometry.coordinates[0]])) {
+        return true
+      }
+    } else if (feature.geometry.type === 'MultiPolygon') {
+      for (const polygon of feature.geometry.coordinates) {
+        if (pointInPolygon([lng, lat], [polygon[0]])) {
+          return true
+        }
+      }
+    }
+  }
+
+  return false
+}
+
+// Helper to check if coordinates are within Singapore boundaries (using GeoJSON)
+async function isInSingapore(lat: number, lng: number): Promise<boolean> {
+  const boundaryData = await loadSingaporeBoundary()
+  if (!boundaryData) {
+    // Fallback to bounding box if GeoJSON fails to load
+    return lat >= 1.15 && lat <= 1.50 && lng >= 103.6 && lng <= 104.05
+  }
+  return isPointInSingapore(lat, lng, boundaryData)
+}
+
+// NEW: helper to turn "shopping_mall" -> "Shopping Mall"
+function humanizeSnakeCase(s = "") {
+  return s
+    .replace(/_/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// Helper to format minutes since midnight to 24-hour time (HH:MM)
+function formatTime24(minutes: number): string {
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
+}
+
+// Helper to get today's opening hours text
+function getTodayHoursText(opening: OpeningHours): string {
+  if (!opening.weekly) {
+    // Try to extract from weekdayText if available
+    if (opening.weekdayText && opening.weekdayText.length > 0) {
+      const today = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+      const todayText = opening.weekdayText[today]
+      if (todayText) {
+        // Extract just the hours part (remove day name)
+        const hoursMatch = todayText.match(/:\s*(.+)$/)
+        return hoursMatch ? hoursMatch[1] : todayText
+      }
+    }
+    return ""
+  }
+
+  const today = new Date().getDay() // 0=Sun, 1=Mon, ..., 6=Sat
+  const intervals = opening.weekly[today]
+  
+  if (!intervals || intervals.length === 0) {
+    return "Closed"
+  }
+
+  // Format all intervals for today
+  const formatted = intervals.map(interval => {
+    const start = formatTime24(interval.startMin)
+    const end = formatTime24(interval.endMin)
+    return `${start} - ${end}`
+  }).join(', ')
+
+  return formatted
+}
+
+// NEW: numeric Opening Hours model (you can compute on this)
+type DayInterval = { startMin: number; endMin: number } // minutes since midnight
+type OpeningHours = {
+  isOpenNow: boolean | null
+  weekdayText?: string[]
+  weekly?: Record<number, DayInterval[]> // 0=Sun..6=Sat, numeric minutes
+}
+
+// NEW: parse Google "periods" to numeric minutes (handles overnight & multiple intervals)
+function parseOpeningHours(place: any): OpeningHours {
+  // Try both new & legacy shapes from Google
+  const oh =
+    place?.currentOpeningHours ||
+    place?.current_opening_hours ||
+    place?.regularOpeningHours ||
+    place?.regular_opening_hours ||
+    place?.opening_hours ||
+    null
+
+  if (!oh) return { isOpenNow: null }
+
+  const isOpenNow =
+    typeof oh.open_now === "boolean"
+      ? oh.open_now
+      : typeof oh.openNow === "boolean"
+      ? oh.openNow
+      : null
+
+  const weekdayText = Array.isArray(oh.weekday_text)
+    ? oh.weekday_text
+    : Array.isArray(oh.weekdayText)
+    ? oh.weekdayText
+    : Array.isArray(oh.weekdayDescriptions)
+    ? oh.weekdayDescriptions
+    : undefined
+
+  // Helper: "HHMM" -> minutes since midnight
+  const toMinutes = (t?: string): number | null => {
+    if (!t || !/^\d{4}$/.test(t)) return null
+    const hh = Number(t.slice(0, 2))
+    const mm = Number(t.slice(2))
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return null
+    return hh * 60 + mm
+  }
+
+  const rawPeriods = oh.periods || []
+  const weekly: Record<number, DayInterval[]> = {}
+
+  // Helper to add intervals
+  const push = (day: number, start: number, end: number) => {
+    if (!weekly[day]) weekly[day] = []
+    weekly[day].push({ startMin: start, endMin: end })
+  }
+
+  if (Array.isArray(rawPeriods) && rawPeriods.length > 0) {
+    for (const p of rawPeriods) {
+      // Legacy/new commonly seen fields
+      const open = p.open || p.opens || p.start
+      const close = p.close || p.closes || p.end
+
+      // day indices are 0..6 (Sun..Sat) in Google legacy and new API
+      const openDay: number | null = typeof open?.day === "number" ? open.day : null
+      const closeDay: number | null = typeof close?.day === "number" ? close.day : openDay
+
+      // Try different time formats: "HHMM" string or {hour, minute} object
+      const oMin = open?.hour !== undefined && open?.minute !== undefined
+        ? open.hour * 60 + open.minute
+        : toMinutes(open?.time)
+      const cMin = close?.hour !== undefined && close?.minute !== undefined
+        ? close.hour * 60 + close.minute
+        : toMinutes(close?.time)
+
+      if (openDay == null || oMin == null) {
+        continue
+      }
+
+      // Handle 24/7 places (no close time)
+      if (cMin == null) {
+        // Open 24 hours - set to full day
+        push(openDay, oMin, 24 * 60)
+        continue
+      }
+
+      // Normalize intervals; handle overnight (closeDay may differ or cMin < oMin)
+      const sameDay = closeDay === openDay
+      const overnight = !sameDay || cMin <= oMin
+
+      if (!overnight) {
+        // Simple same-day window e.g., 10:00–22:00
+        push(openDay, oMin, cMin)
+      } else {
+        // Split across days: today oMin..24:00, nextDay 00:00..cMin
+        push(openDay, oMin, 24 * 60)
+        const nextDay = (openDay + 1) % 7
+        push(nextDay, 0, cMin)
+      }
+    }
+  }
+
+  return {
+    isOpenNow,
+    weekdayText,
+    weekly: Object.keys(weekly).length ? weekly : undefined,
+  }
+}
+
 const HANGOUT_CATEGORIES = [
   "cafe",
   "restaurant",
@@ -70,6 +297,14 @@ export class GooglePlacesService {
     radius: number
   ): Promise<HangoutSpot[]> {
     const [lng, lat] = center
+    
+    // Validate that search center is within Singapore
+    const inSingapore = await isInSingapore(lat, lng)
+    if (!inSingapore) {
+      console.warn("Search center outside the boundary:", { lat, lng })
+      throw new Error("Search is outside the boundary")
+    }
+    
     const cacheKey = `nearby:${lat.toFixed(4)},${lng.toFixed(4)}:${radius}`
     const cached = getCache<HangoutSpot[]>(cacheKey)
     if (cached) return cached
@@ -87,7 +322,11 @@ export class GooglePlacesService {
       for (const place of places) {
         const spot = this.convertToHangoutSpot(place)
         if (spot) {
-          spots.push(spot)
+          // Check if spot is within Singapore boundaries
+          const inBounds = await isInSingapore(spot.coordinates[1], spot.coordinates[0])
+          if (inBounds) {
+            spots.push(spot)
+          }
         }
       }
 
@@ -159,6 +398,14 @@ export class GooglePlacesService {
     radius: number
   ): Promise<HangoutSpot[]> {
     const [lng, lat] = center
+    
+    // Validate that search center is within Singapore
+    const inSingapore = await isInSingapore(lat, lng)
+    if (!inSingapore) {
+      console.warn("Search center outside the boundary:", { lat, lng })
+      throw new Error("Search is outside the boundary")
+    }
+    
     const cacheKey = `nearby:${lat.toFixed(4)},${lng.toFixed(4)}:${radius}`
     const cached = getCache<HangoutSpot[]>(cacheKey)
     if (cached) return cached
@@ -178,7 +425,11 @@ export class GooglePlacesService {
       for (const place of places) {
         const spot = this.convertToHangoutSpot(place)
         if (spot) {
-          spots.push(spot)
+          // Check if spot is within Singapore boundaries
+          const inBounds = await isInSingapore(spot.coordinates[1], spot.coordinates[0])
+          if (inBounds) {
+            spots.push(spot)
+          }
         }
       }
 
@@ -199,16 +450,30 @@ export class GooglePlacesService {
         ? place.photos[0].photo_reference
         : "/placeholder.svg"
 
-      const openingHours = place.opening_hours?.open_now !== undefined
-        ? place.opening_hours.open_now ? "Open now" : "Closed"
-        : "Hours not available"
+      const opening = parseOpeningHours(place)
 
-      const category = place.types?.find((type: string) => HANGOUT_CATEGORIES.includes(type)) || "place"
+      // Format opening hours with time display
+      let openingHours: string
+      if (opening.isOpenNow === null) {
+        openingHours = "Hours not available"
+      } else if (opening.isOpenNow) {
+        openingHours = "Open now"
+      } else {
+        // Closed - show today's hours
+        const todayHours = getTodayHoursText(opening)
+        openingHours = todayHours ? `Closed - ${todayHours}` : "Closed"
+      }
+      
+      const categorySlug =
+        place.types?.find((type: string) => HANGOUT_CATEGORIES.includes(type)) ||
+        "place"
+      
+      const categoryLabel = humanizeSnakeCase(categorySlug)
 
-      return new HangoutSpot(
+      const spot = new HangoutSpot(
         place.place_id,
         place.name,
-        category,
+        categoryLabel, //readable label
         priceRange,
         place.rating || 0,
         place.user_ratings_total || 0,
@@ -217,6 +482,12 @@ export class GooglePlacesService {
         thumbnailUrl,
         openingHours
       )
+
+      // NEW: also attach structured data for later UI use
+      ;(spot as any).categorySlug = categorySlug
+      ;(spot as any).opening = opening     
+      return spot
+
     } catch (error) {
       console.error("Error converting place to HangoutSpot:", error)
       return null
