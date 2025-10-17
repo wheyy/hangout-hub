@@ -10,6 +10,7 @@ export interface MarkerOptions {
   popup?: string
   onClick?: () => void
   isSelected?: boolean
+  color?: string // base color for unselected state (e.g., carparks)
 }
 
 export interface BoundaryOptions {

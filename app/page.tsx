@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar"
 import { MapSearchBar } from "@/components/map/map-search-bar"
 import { HangoutDrawer } from "@/components/map/hangout-drawer"
 import { ParkingDrawer } from "@/components/map/parking-drawer"
+import { fetchCarparkAvailability, getCarparksWithinRadiusAsync, CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
 import { ErrorPopup } from "@/components/map/error-popup"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-places"
@@ -29,24 +30,22 @@ async function loadSingaporeBoundary() {
 
 // Point-in-polygon algorithm (Ray Casting)
 function pointInPolygon(point: [number, number], polygon: number[][][]): boolean {
-  const [lng, lat] = point
-  let inside = false
+  const [lng, lat] = point;
+  let inside = false;
 
   for (const ring of polygon) {
-    let j = ring.length - 1
+    let j = ring.length - 1;
     for (let i = 0; i < ring.length; i++) {
-      const [xi, yi] = ring[i]
-      const [xj, yj] = ring[j]
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
 
       const intersect = ((yi > lat) !== (yj > lat)) &&
-        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi)
-      
-      if (intersect) inside = !inside
-      j = i
+        (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+      j = i;
     }
   }
-  
-  return inside
+  return inside;
 }
 
 // Check if point is within any Singapore subzone
@@ -72,7 +71,7 @@ function isPointInSingapore(lat: number, lng: number, boundaryData: any): boolea
   return false
 }
 
-function MapInterface() {
+export function MapInterface() {
   const { map, isLoaded } = useMap()
   const [spots, setSpots] = useState<HangoutSpot[]>([])
   const [loading, setLoading] = useState(false)
@@ -83,6 +82,7 @@ function MapInterface() {
   const [dragDebounceTimer, setDragDebounceTimer] = useState<NodeJS.Timeout | null>(null)
   const [searchBarValue, setSearchBarValue] = useState("")
   const [hasSearchPin, setHasSearchPin] = useState(false)
+  const [carparks, setCarparks] = useState<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>>([])
 
   useEffect(() => {
     if (!map) return
@@ -99,10 +99,20 @@ function MapInterface() {
     setError(null)
 
     try {
+      // Hangout spots
       const fetchedSpots = await GooglePlacesService.searchNearbyInArea([lng, lat], 500)
-      
       setSpots(fetchedSpots)
-      
+
+      // Carparks
+  const carparkAvailabilities = await fetchCarparkAvailability()
+  const carparkInfos = await getCarparksWithinRadiusAsync([lng, lat], 500)
+      // Merge info and availability
+      const carparksWithAvail = carparkInfos.map((info) => ({
+        info,
+        availability: carparkAvailabilities.find((a) => a.carpark_number === info.carpark_number),
+      }))
+      setCarparks(carparksWithAvail)
+
       map.clearMarkers()
       fetchedSpots.forEach((spot) => {
         map.addMarker({
@@ -112,10 +122,21 @@ function MapInterface() {
           onClick: () => handleCardClick(spot),
         })
       })
+      carparksWithAvail.forEach(({ info, availability }) => {
+        map.addMarker({
+          id: `carpark-${info.carpark_number}`,
+          coordinates: info.coordinates,
+          title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
+          color: "#04c7f8ff", // green for carparks
+        })
+      })
+      // Show the parking drawer when we have results
+      setParkingDrawerOpen(true)
     } catch (err) {
       console.error("Area search error:", err)
       setError(err instanceof Error ? err.message : "Failed to search for places")
       setSpots([])
+      setCarparks([])
     } finally {
       setLoading(false)
     }
@@ -260,6 +281,7 @@ function MapInterface() {
       <ParkingDrawer
         isOpen={parkingDrawerOpen}
         onToggle={handleToggleParkingDrawer}
+        carparks={carparks}
       />
       {error && (
         <ErrorPopup

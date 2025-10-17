@@ -37,7 +37,7 @@ export function createSearchPinElement(): HTMLElement {
   return container
 }
 
-export function createHangoutSpotPinElement(title?: string, isSelected: boolean = false): HTMLElement {
+export function createHangoutSpotPinElement(title?: string, isSelected: boolean = false, baseColor?: string): HTMLElement {
   const container = document.createElement("div")
   container.style.cursor = "pointer"
   container.style.zIndex = "50"
@@ -48,7 +48,8 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
   circle.style.width = "24px"
   circle.style.height = "24px"
   circle.style.borderRadius = "50%"
-  circle.style.backgroundColor = isSelected ? "#F97316" : "#EF4444"
+  const unselectedColor = baseColor || "#EF4444"
+  circle.style.backgroundColor = isSelected ? "#F97316" : unselectedColor
   circle.style.border = isSelected ? "3px solid white" : "2px solid white"
   circle.style.boxShadow = isSelected 
     ? "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)" 

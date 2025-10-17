@@ -90,7 +90,7 @@ export class MapLibreMap {
       this.removeMarker(options.id)
     }
 
-    const el = createHangoutSpotPinElement(options.title, options.isSelected || false)
+  const el = createHangoutSpotPinElement(options.title, options.isSelected || false, options.color)
 
     const marker = new maplibregl.Marker({ 
       element: el,
