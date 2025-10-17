@@ -1,6 +1,7 @@
 ﻿"use client"
 
-import { ChevronLeft, ChevronRight, ParkingSquare } from "lucide-react"
+import { useState } from "react"
+import { ChevronLeft, ChevronRight, ParkingSquare, ChevronDown, ChevronUp } from "lucide-react"
 
 
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
@@ -14,6 +15,11 @@ interface ParkingDrawerProps {
 
 
 export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps) {
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  const toggleCard = (carpark_number: string) => {
+    setExpandedCard(expandedCard === carpark_number ? null : carpark_number);
+  };
   return (
     <div
       className={`fixed right-0 top-14 bottom-0 z-[1000] bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
@@ -41,22 +47,80 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
         <div className="flex-1 overflow-y-auto px-4 py-3">
           {carparks && carparks.length > 0 ? (
             <ul className="space-y-4">
-              {carparks.map(({ info, availability }) => (
-                <li key={info.carpark_number} className="border rounded-lg p-3 shadow-sm">
-                  <div className="font-semibold text-gray-800">{info.address}</div>
-                  <div className="text-xs text-gray-500 mb-1">Code: {info.carpark_number}</div>
-                  <div className="text-xs text-gray-500 mb-1">Type: {ParkingType[info.type]}</div>
-                  {availability ? (
-                    <div className="mt-1">
-                      <span className="text-green-700 font-bold">{availability.lots_available}</span>
-                      <span className="text-gray-600"> / {availability.total_lots} lots available</span>
-                      <span className="ml-2 text-xs text-gray-400">({availability.lot_type})</span>
+              {carparks.map(({ info, availability }) => {
+                const isExpanded = expandedCard === info.carpark_number;
+                return (
+                  <li key={info.carpark_number} className="border rounded-lg shadow-sm">
+                    <div 
+                      className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => toggleCard(info.carpark_number)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">{info.address}</div>
+                          <div className="text-xs text-gray-500 mb-1">Code: {info.carpark_number}</div>
+                          <div className="text-xs text-gray-500 mb-1">Type: {ParkingType[info.type]}</div>
+                          {availability ? (
+                            <div className="mt-1">
+                              <span className="text-green-700 font-bold">{availability.lots_available}</span>
+                              <span className="text-gray-600"> / {availability.total_lots} lots available</span>
+                              <span className="ml-2 text-xs text-gray-400">({availability.lot_type})</span>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400">Availability data not found</div>
+                          )}
+                        </div>
+                        <div className="ml-2 flex-shrink-0">
+                          {isExpanded ? (
+                            <ChevronUp className="w-5 h-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="text-xs text-gray-400">Availability data not found</div>
-                  )}
-                </li>
-              ))}
+
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pt-0 border-t border-gray-100 bg-gray-50">
+                        <div className="text-sm font-semibold text-gray-700 mt-2 mb-1">Parking Rates</div>
+                        {info.short_term_parking ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Short-term: </span>{info.short_term_parking}
+                          </div>
+                        ) : null}
+                        {info.free_parking ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Free parking: </span>{info.free_parking}
+                          </div>
+                        ) : null}
+                        {info.night_parking ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Night parking: </span>{info.night_parking}
+                          </div>
+                        ) : null}
+                        {info.car_park_decks ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Decks: </span>{info.car_park_decks}
+                          </div>
+                        ) : null}
+                        {info.gantry_height ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Gantry height: </span>{info.gantry_height}
+                          </div>
+                        ) : null}
+                        {info.car_park_basement ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Basement: </span>{info.car_park_basement}
+                          </div>
+                        ) : null}
+                        {!info.short_term_parking && !info.free_parking && !info.night_parking && (
+                          <div className="text-xs text-gray-400 italic">No rate information available</div>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
