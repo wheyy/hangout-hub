@@ -5,6 +5,9 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged,
   updateProfile,
+  updatePassword as fbUpdatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
   type User,
 } from "firebase/auth"
 import { doc, serverTimestamp, setDoc } from "firebase/firestore"
@@ -47,6 +50,10 @@ function mapFirebaseError(code: string): string {
       return "Invalid email or password."
     case "auth/too-many-requests":
       return "Too many attempts. Please try again later."
+    case "auth/weak-password":
+      return "Password is too weak."
+    case "auth/requires-recent-login":
+      return "Please sign in again to complete this action."
     default:
       return "Something went wrong. Please try again."
   }
@@ -101,5 +108,23 @@ export const authService = {
         resolve(toAuthUser(user))
       })
     })
+  },
+
+  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const user = auth.currentUser
+    if (!user || !user.email) {
+      throw new Error("Not authenticated.")
+    }
+    try {
+      const credential = EmailAuthProvider.credential(user.email, currentPassword)
+      await reauthenticateWithCredential(user, credential)
+      await fbUpdatePassword(user, newPassword)
+    } catch (e: any) {
+      const code = e?.code || ""
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+        throw new Error("Current password is incorrect.")
+      }
+      throw new Error(mapFirebaseError(code))
+    }
   },
 }

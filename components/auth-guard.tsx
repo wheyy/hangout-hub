@@ -23,12 +23,12 @@ export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
         setIsAuthenticated(!!user)
 
         if (requireAuth && !user) {
-          router.push("/auth/login")
+          router.replace("/auth/login")
           return
         }
 
         if (!requireAuth && user) {
-          router.push("/search")
+          router.replace("/search")
           return
         }
       } catch (error) {

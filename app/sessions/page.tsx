@@ -143,9 +143,11 @@ export default function SessionsPage() {
                   Discover Places
                 </Button>
               </Link>
-              <Button variant="ghost" className="text-gray-700 hover:text-blue-600">
-                Profile
-              </Button>
+              <Link href="/profile">
+                <Button variant="ghost" className="text-gray-700 hover:text-blue-600">
+                  Profile
+                </Button>
+              </Link>
             </div>
           </div>
         </div>
