@@ -1,45 +1,193 @@
 import { HangoutSpot } from "./hangoutspot"
 import { User } from "./user"
+import { db } from "@/lib/firebase/config";
+import { 
+    collection, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    getDocs,
+    deleteDoc,
+    query,
+    where,
+    updateDoc
+  } from "firebase/firestore"; 
 
+import { loadUser, useUserStore } from "../mock-data";
 
 // Feel free to update this class, I did not vet the behaviours
 export class Meetup {
     private members: User[] = []
-
+    
     constructor(
         public id: string,
         public title: string,
-        public dateTime: Date,
-        // public destination: HangoutSpot,
-        public destination: string, //TODO: CHANGE TO HANGOUT SPOT WHEN Location search by Map Team is done
+        public dateTime: Date, 
+        public destination: string, // TODO update to destination ID
         public creator: User
     ) {
-        this.members.push(creator) // Creator is automatically a member
+        this.members.push(creator)
         creator.addMeetup(this)
         console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
 
-    static saveMeetupToFirestore(meetup: Meetup): boolean {
-        // Placeholder for saving to a database or external storage
+    // ✅ Create a new meetup and store to Firebase w auto-generated ID
+    static async create(
+        title: string,
+        dateTime: Date,
+        destination: string,
+        creator: User
+    ): Promise<Meetup> {
         try {
+            // Generate a new document reference (with auto-generated ID)
+            const meetupRef = doc(collection(db, "meetups"));
             
+            // Create the Meetup object with Firebase ID
+            const meetup = new Meetup(
+                meetupRef.id,
+                title,
+                dateTime,
+                destination,
+                creator
+            );
+
+            // Save to Firestore
+            await setDoc(meetupRef, {
+                title: meetup.title,
+                dateTime: meetup.dateTime,
+                destination: meetup.destination,
+                creatorId: meetup.creator.id,
+                memberIds: meetup.getMemberIds(),
+            });
+            
+            console.log("Meetup created with ID:", meetupRef.id);
+            return meetup;
+        } catch (e) {
+            console.error("Error creating meetup:", e);
+            throw e;
+        }
+    }
+
+    // ✅ Load a single meetup from Firestore
+    static async load(meetupId: string): Promise<Meetup | null> {
+        try {
+            const meetupDoc = await getDoc(doc(db, "meetups", meetupId));
+            
+            if (!meetupDoc.exists()) {
+                console.log("Meetup not found");
+                return null;
+            }
+            
+            const data = meetupDoc.data();
+
+            const meetup = new Meetup(
+                meetupDoc.id,
+                data.title,
+                new Date(data.dateTime),
+                data.destination,
+                new User("u001", "CURRENT_MOCK_USER", "CURRENT_MOCK_USER@example.com", null) // Placeholder for creator | TODO: CHANGE TO BELOW
+                // User.searchFromFirestore(creator.id) // Need to fetch User object for creator
+            );
+            
+            
+            // TO BE IMPLEMENTED: Fetch users from user db
+            data.memberIds.forEach((memberId: string) => {
+                if (memberId !== meetup.creator.id) {
+                    const member = loadUser(memberId); // TODO: TEMP FUNCTION
+                    if (member) {
+                        meetup.addMember(member);
+                    }
+                }
+            });
+            
+            return meetup;
+        } catch (e) {
+            console.error("Error loading meetup:", e);
+            return null;
+        }
+    }
+
+    // ✅ Update meetup in Firestore
+    async save(): Promise<boolean> {
+        try {
+            await updateDoc(doc(db, "meetups", this.id), {
+                title: this.title,
+                dateTime: this.dateTime.toISOString(),
+                destination: this.destination,
+                memberIds: this.getMemberIds(),
+                updatedAt: new Date().toISOString()
+            });
+            return true;
+        } catch (e) {
+            console.error("Error updating meetup:", e);
+            return false;
+        }
+    }
+
+    // ✅ Delete meetup from Firestore
+    async deleteMeetup(): Promise<boolean> {
+        try {
+            console.log("Deleting meetup:", this.id);
+            
+            // Remove from all members
+            for (const member of this.members) {
+                console.log("Removing meetup for member:", member.getId());
+                member.removeMeetup(this);
+            }
+            this.members = [];
+            
+            // Delete from Firestore
+            await deleteDoc(doc(db, "meetups", this.id));
+            
+            console.log(`Meetup ${this.title} deleted.`);
+            return true;
         } catch (error) {
-            console.error("Error saving meetup:", error)
-            return false
+            console.error("Error while deleting meetup:", error);
+            return false;
         }
-        console.log(`Meetup ${meetup.title} saved.`)
-        return true
     }
 
-    addMember(user: User): void {
+    // ✅ Add member and update Firestore
+    async addMember(user: User): Promise<void> {
         if (!this.members.find(member => member.id === user.id)) {
-            this.members.push(user)
+            this.members.push(user);
+            await this.save(); // Sync to Firestore
         }
     }
 
-    removeMember(user: User): void {
-        this.members = this.members.filter(member => member.id !== user.id)
+    // ✅ Remove member and update Firestore
+    async removeMember(user: User): Promise<void> {
+        this.members = this.members.filter(member => member.id !== user.id);
+        await this.save(); // Sync to Firestore
     }
+
+    // private static async addMeetupToFirestore(meetup: Meetup): Promise<boolean> {
+    //     try {
+    //         const docRef = await addDoc(collection(db, "meetup"), {
+    //             id: meetup.id,
+    //             title: meetup.title,
+    //             dateTime: meetup.dateTime.toISOString(),
+    //             destination: meetup.destination,
+    //             creatorId: meetup.creator.id,
+    //             memberIds: meetup.getMemberIds(),
+    //         });
+    //         console.log("Document written with ID: ", docRef.id);
+    //         return true;
+    //       } catch (e) {
+    //         console.error("Error adding document: ", e);
+    //         return false;
+    //       }
+    // }
+
+    // addMember(user: User): void {
+    //     if (!this.members.find(member => member.id === user.id)) {
+    //         this.members.push(user)
+    //     }
+    // }
+
+    // removeMember(user: User): void {
+    //     this.members = this.members.filter(member => member.id !== user.id)
+    // }
 
     start(): void {
         console.log(`Meetup ${this.title} has started.`)
@@ -82,8 +230,13 @@ export class Meetup {
         return now < this.dateTime ? "active" : "completed"
     }
 
+    getMemberIds(): string[] {
+        return this.members.map(member => member.id)
+    }
+
     updateDetails(newTitle: string, newDateTime: Date, newDestination: string): boolean {
         if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.tempUpdateDestination(newDestination)) {
+            this.save();
             return true
         }
         return false
@@ -116,20 +269,20 @@ export class Meetup {
         return true
     }
 
-    deleteMeetup(): boolean {
-        try {
-          console.log("Deleting meetup:", this.id);
-          for (const member of this.members) {
-            console.log("Removing meetup for member:", member.getId());
-            member.removeMeetup(this);
-          }
-          this.members = [];
-          console.log(`Meetup ${this.title} deleted.`);
-          return true;
-        } catch (error) {
-          console.error("Error while deleting meetup:", error);
-          return false;
-        }
-      }
+    // deleteMeetup(): boolean {
+    //     try {
+    //       console.log("Deleting meetup:", this.id);
+    //       for (const member of this.members) {
+    //         console.log("Removing meetup for member:", member.getId());
+    //         member.removeMeetup(this);
+    //       }
+    //       this.members = [];
+    //       console.log(`Meetup ${this.title} deleted.`);
+    //       return true;
+    //     } catch (error) {
+    //       console.error("Error while deleting meetup:", error);
+    //       return false;
+    //     }
+    //   }
     
 }

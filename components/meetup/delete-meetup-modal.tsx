@@ -38,7 +38,7 @@ export function DeleteMeetupModal({
   const handleConfirm = async () => {
     if (!meetup) return;
   
-    if (meetup.deleteMeetup()) {
+    if (await meetup.deleteMeetup()) {
       console.log("Meetup ended and deleted.");
   
       // Wait for state updates to complete

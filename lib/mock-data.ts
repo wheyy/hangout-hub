@@ -1,3 +1,5 @@
+//THIS file is for temporary fake data / methods that simulate other member's potential backend
+
 import { Invitation } from "@/lib/data/invitation"
 import { User } from "@/lib/data/user"
 import { Meetup } from "@/lib/data/meetup"
@@ -14,7 +16,19 @@ import {create} from "zustand"
 
 
 function cloneUser(u: User): User {
-  return Object.assign(Object.create(Object.getPrototypeOf(u)), u);
+  const cloned = new User(u.id, u.name, u.email, u.currentLocation);
+  
+  // Copy over the meetups (creating a NEW array)
+  const meetups = u.getMeetups();
+  meetups.forEach(meetup => {
+    // Directly access the private field to avoid calling addMeetup
+    // which would trigger notifyUpdate again
+    if (meetup.getMemberIds().includes(cloned.id)) {
+      (cloned as any).meetups.push(meetup);
+    }
+  });
+  
+  return cloned;
 }
 
 interface UserStore {
@@ -23,7 +37,7 @@ interface UserStore {
 }
 
 export const useUserStore = create<UserStore>((set, get) => {
-  const user = new User("1", "Guest", "guest@example.com", null);
+  const user = new User("u001", "CURRENT_MOCK_USER", "CURRENT_MOCK_USER@example.com", null);
 
   user.notifyUpdate = () => {
     // clone to change identity (preserving methods)
@@ -40,7 +54,15 @@ export const useUserStore = create<UserStore>((set, get) => {
   };
 });
 
-
+// FAKE FUNCTION FOR NOW:
+export function loadUser(userId: string): User | null {
+  return new User(
+    "u002",
+    "Bob Smith",
+    "bob.smith@example.com",
+    [-73.935242, 40.73061] // New York, NY
+  );
+}
 // ✅ Mock list of all users in the system
 const currentUser = useUserStore.getState().user;
 

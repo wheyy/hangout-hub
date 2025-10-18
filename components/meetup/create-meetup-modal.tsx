@@ -18,10 +18,10 @@ import { useUserStore } from "@/lib/mock-data"
 interface CreateMeetupModalProps {
   isOpen: boolean
   onClose: () => void
-  onCreated: (meetup: Meetup) => void
+  // onCreated: (meetup: Meetup) => void
 }
 
-export function CreateMeetupModal({ isOpen, onClose, onCreated }: CreateMeetupModalProps) {
+export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     destination: "",
@@ -33,7 +33,7 @@ export function CreateMeetupModal({ isOpen, onClose, onCreated }: CreateMeetupMo
   const router = useRouter();
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
 
     const [year, month, day] = formData.date.split("-").map(Number)   // "YYYY-MM-DD"
     const [hour, minute]      = formData.time.split(":").map(Number)   // "HH:mm"
@@ -42,23 +42,16 @@ export function CreateMeetupModal({ isOpen, onClose, onCreated }: CreateMeetupMo
 
     e.preventDefault()
 
-    const newMeetup: Meetup = new Meetup(
-      `meetup-${Date.now()}`, // id
+    const newMeetup: Meetup = await Meetup.create(
       formData.title, // title
       //format dd/mm/yyyy
       dateTime, //dateTime
       formData.destination, // destination
-      // date: formData.date,
-      // time: formData.time,
-      // status: "active",
-      // memberCount: 1,
       CURRENT_USER, // creator
-      // creatorId: CURRENT_USER.id,
-      // members: [CURRENT_USER.id],
     )
     // Meetup.saveMeetupToFirestore(newMeetup)
 
-    onCreated?.(newMeetup)
+    // onCreated?.(newMeetup)
 
     // Reset form
     setFormData({ title: "", destination: "", date: "", time: "10:00" })

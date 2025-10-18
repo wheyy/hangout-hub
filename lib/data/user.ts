@@ -17,7 +17,7 @@ export class User {
       if (!this.meetups.find((m) => m.id === meetup.id)) {
         this.meetups.push(meetup);
         console.log("Meetup added to user meetups.");
-        this.notifyUpdate?.(); // <-- tell Zustand to refresh UI
+        this.notifyUpdate?.(); 
       } else {
         console.log("Meetup already exists in user's meetups.");
       }
@@ -31,6 +31,8 @@ export class User {
       }
   
     getMeetups(): Array<Meetup> {
+      console.log("Retrieving user meetups in getMeetups():", this.meetups);
+      
       return this.meetups;
     }
 

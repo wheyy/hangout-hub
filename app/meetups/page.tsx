@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { MapPin, Users, UserPlus, Calendar, Clock, Navigation, Mail, Send } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { CreateMeetupModal } from "@/components/meetup/create-meetup-modal"
 import { Navbar } from "@/components/navbar"
 import { InvitationCard } from "@/components/invitation-card"
@@ -20,9 +20,22 @@ import { ChevronDown, ChevronUp } from "lucide-react"; // Icons for dropdown tog
 export default function MeetupsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [invitations, setInvitations] = useState<Invitation[]>([])
-  const [meetups, setMeetups] = useState<Meetup[]>([])
-  const  CURRENT_USER = useUserStore.getState().user;
+  // const [meetups, setMeetups] = useState<Meetup[]>([])
+  const CURRENT_USER = useUserStore((s) => s.user); // Subscribe to changes
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State to manage dropdown visibility
+  const meetups = useUserStore((s) => s.user.getMeetups());
+  
+  // ✅ Recalculate activeMeetups whenever meetups changes
+  const activeMeetups = useMemo(() => 
+    meetups.filter((meetup) => meetup.getStatus() === "active"),
+    [meetups]
+  );
+  
+  // ✅ Recalculate pastMeetups whenever meetups changes
+  const pastMeetups = useMemo(() => 
+    meetups.filter((meetup) => meetup.getStatus() === "completed"),
+    [meetups]
+  );
 
   // Load data from localStorage
   useEffect(() => {
@@ -30,22 +43,15 @@ export default function MeetupsPage() {
     console.log("Fetching meetups for CURRENT_USER...");
     const updatedMeetups = CURRENT_USER.getMeetups();
     console.log("Updated meetups:", updatedMeetups);
-    setMeetups(updatedMeetups);
-  }, [])
+    // setMeetups(updatedMeetups);
+    console.log("Meetups new state:", meetups);
+  }, [CURRENT_USER])
 
   // Filter invitations for current user
   const receivedInvitations = invitations.filter((inv) => inv.recipientId === CURRENT_USER.id)
   const sentInvitations = invitations.filter((inv) => inv.senderId === CURRENT_USER.id)
   const pendingReceived = receivedInvitations.filter((inv) => inv.status === "pending")
 
-  // Get active meetups for current user
-  const activeMeetups = meetups.filter(
-    (meetup) => meetup.getStatus() === "active"
-  )
-  
-  const pastMeetups = meetups.filter(
-    (meetup) => meetup.getStatus() === "completed"
-  )
 
 
   const handleAcceptInvitation = (invitation: Invitation) => {
@@ -298,7 +304,7 @@ export default function MeetupsPage() {
       </div>
 
       {/* Create Meetup Modal */}
-      <CreateMeetupModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} onCreated={()=>setMeetups(CURRENT_USER.getMeetups())}/>
+      <CreateMeetupModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)}/>
     </div>
   )
 }
