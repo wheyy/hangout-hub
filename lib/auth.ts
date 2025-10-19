@@ -1,4 +1,5 @@
 import { auth, db } from "./firebase"
+import { User as AppUser } from "./data/user"
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -65,15 +66,20 @@ export const authService = {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       // Set display name
       await updateProfile(cred.user, { displayName: name })
-      // Create user document for future features
-      const userRef = doc(db, "users", cred.user.uid)
-      await setDoc(userRef, {
-        uid: cred.user.uid,
-        email: cred.user.email,
+      // Create user document using our model
+      await AppUser.createInFirestore({
+        id: cred.user.uid,
         name,
-        createdAt: serverTimestamp(),
+        email: cred.user.email ?? email,
+        currentLocation: null,
       })
-      return toAuthUser(auth.currentUser) as AuthUser
+      // Return unified shape
+      return {
+        id: cred.user.uid,
+        email: cred.user.email ?? email,
+        name,
+        avatar_url: cred.user.photoURL || undefined,
+      }
     } catch (e: any) {
       throw new Error(mapFirebaseError(e?.code || ""))
     }
@@ -82,7 +88,15 @@ export const authService = {
   async signIn(email: string, password: string): Promise<AuthUser> {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
-      return toAuthUser(cred.user) as AuthUser
+      // Load user document; if missing, raise an error
+      const u = await AppUser.loadFromFirestore(cred.user.uid)
+      if (!u) throw new Error("User profile not found.")
+      return {
+        id: cred.user.uid,
+        email: u.email,
+        name: u.name,
+        avatar_url: cred.user.photoURL || undefined,
+      }
     } catch (e: any) {
       throw new Error(mapFirebaseError(e?.code || ""))
     }
@@ -97,15 +111,31 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<AuthUser | null> {
-    // If already available, return immediately
-    const existing = toAuthUser(auth.currentUser)
-    if (existing) return existing
+    // If already available, try to enrich from user doc
+    const cur = auth.currentUser
+    if (cur) {
+      try {
+        const u = await AppUser.loadFromFirestore(cur.uid)
+        if (!u) return null
+        return { id: cur.uid, email: u.email, name: u.name, avatar_url: cur.photoURL || undefined }
+      } catch {
+        // Fallback to auth-only mapping
+        return toAuthUser(cur)
+      }
+    }
 
-    // Await one-time auth state
+    // Await one-time auth state, then load user doc
     return new Promise<AuthUser | null>((resolve) => {
-      const unsub = onAuthStateChanged(auth, (user) => {
+      const unsub = onAuthStateChanged(auth, async (user) => {
         unsub()
-        resolve(toAuthUser(user))
+        if (!user) return resolve(null)
+        try {
+          const u = await AppUser.loadFromFirestore(user.uid)
+          if (!u) return resolve(null)
+          resolve({ id: user.uid, email: u.email, name: u.name, avatar_url: user.photoURL || undefined })
+        } catch {
+          resolve(toAuthUser(user))
+        }
       })
     })
   },
@@ -126,5 +156,32 @@ export const authService = {
       }
       throw new Error(mapFirebaseError(code))
     }
+  },
+
+  // Returns the hydrated domain User (with meetups loaded via user.ts)
+  async getCurrentUserFull(): Promise<AppUser> {
+    const resolveWithUser = async (fbUser: User): Promise<AppUser> => {
+      const u = await AppUser.loadFromFirestore(fbUser.uid)
+      if (!u) throw new Error("User profile not found.")
+      return u
+    }
+
+    const cur = auth.currentUser
+    if (cur) {
+      return resolveWithUser(cur)
+    }
+
+    return new Promise<AppUser>((resolve, reject) => {
+      const unsub = onAuthStateChanged(auth, async (u) => {
+        unsub()
+        if (!u) return reject(new Error("Not authenticated."))
+        try {
+          const full = await resolveWithUser(u)
+          resolve(full)
+        } catch (e) {
+          reject(e)
+        }
+      })
+    })
   },
 }
