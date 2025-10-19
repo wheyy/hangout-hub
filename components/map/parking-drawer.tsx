@@ -11,10 +11,11 @@ interface ParkingDrawerProps {
   isOpen: boolean;
   onToggle: () => void;
   carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>;
+  onSelect?: (info: CarparkInfo, availability?: CarparkAvailability) => void;
 }
 
 
-export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps) {
+export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingDrawerProps) {
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
 
   const toggleCard = (carpark_number: string) => {
@@ -53,7 +54,7 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
                   <li key={info.carpark_number} className="border rounded-lg shadow-sm">
                     <div 
                       className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => toggleCard(info.carpark_number)}
+                      onClick={() => onSelect?.(info, availability)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -70,13 +71,21 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
                             <div className="text-xs text-gray-400">Availability data not found</div>
                           )}
                         </div>
-                        <div className="ml-2 flex-shrink-0">
+                        <button
+                          type="button"
+                          aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                          className="ml-2 flex-shrink-0 p-1 rounded hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleCard(info.carpark_number);
+                          }}
+                        >
                           {isExpanded ? (
                             <ChevronUp className="w-5 h-5 text-gray-400" />
                           ) : (
                             <ChevronDown className="w-5 h-5 text-gray-400" />
                           )}
-                        </div>
+                        </button>
                       </div>
                     </div>
 

@@ -83,6 +83,7 @@ export function MapInterface() {
   const [searchBarValue, setSearchBarValue] = useState("")
   const [hasSearchPin, setHasSearchPin] = useState(false)
   const [carparks, setCarparks] = useState<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>>([])
+  const [selectedCarparkId, setSelectedCarparkId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!map) return
@@ -91,6 +92,14 @@ export function MapInterface() {
       map.updateMarkerSelection(`spot-${spot.id}`, selectedSpot?.id === spot.id)
     })
   }, [selectedSpot, spots, map])
+
+  // Keep carpark marker highlight in sync with selection
+  useEffect(() => {
+    if (!map) return
+    carparks.forEach(({ info }) => {
+      map.updateMarkerSelection?.(`carpark-${info.carpark_number}`, selectedCarparkId === info.carpark_number)
+    })
+  }, [map, carparks, selectedCarparkId])
 
   const performAreaSearch = async (lng: number, lat: number) => {
     if (!map) return
@@ -112,6 +121,7 @@ export function MapInterface() {
         availability: carparkAvailabilities.find((a) => a.carpark_number === info.carpark_number),
       }))
       setCarparks(carparksWithAvail)
+      setSelectedCarparkId(null)
 
       map.clearMarkers()
       fetchedSpots.forEach((spot) => {
@@ -128,6 +138,10 @@ export function MapInterface() {
           coordinates: info.coordinates,
           title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
           color: "#04c7f8ff", // green for carparks
+          onClick: () => {
+            setSelectedCarparkId(info.carpark_number)
+            map.setCenter(info.coordinates[0], info.coordinates[1], 17)
+          },
         })
       })
       // Show the parking drawer when we have results
@@ -282,6 +296,12 @@ export function MapInterface() {
         isOpen={parkingDrawerOpen}
         onToggle={handleToggleParkingDrawer}
         carparks={carparks}
+        onSelect={(info) => {
+          if (!map) return
+          setSelectedCarparkId(info.carpark_number)
+          const [lng, lat] = info.coordinates
+          map.setCenter(lng, lat, 17)
+        }}
       />
       {error && (
         <ErrorPopup
