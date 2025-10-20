@@ -446,9 +446,22 @@ export class GooglePlacesService {
       const priceLevel = place.price_level || 0
       const priceRange = this.getPriceRange(priceLevel)
 
-      const thumbnailUrl = place.photos && place.photos.length > 0
-        ? place.photos[0].photo_reference
-        : "/placeholder.svg"
+      // Generate proper photo URL from Google Places Photo API
+      let thumbnailUrl = "/placeholder.svg"
+      if (place.photos && place.photos.length > 0) {
+        const photo = place.photos[0]
+        // New API format uses photo.name
+        if (photo.name) {
+          const maxWidth = 400
+          const maxHeight = 400
+          thumbnailUrl = `https://places.googleapis.com/v1/${photo.name}/media?maxHeightPx=${maxHeight}&maxWidthPx=${maxWidth}&key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY}`
+        }
+        // Legacy API format uses photo_reference
+        else if (photo.photo_reference) {
+          const maxWidth = 400
+          thumbnailUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photoreference=${photo.photo_reference}&key=${process.env.NEXT_PUBLIC_GOOGLE_PLACES_API_KEY}`
+        }
+      }
 
       const opening = parseOpeningHours(place)
 

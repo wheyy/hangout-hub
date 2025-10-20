@@ -4,6 +4,7 @@ import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { Star, MapPin, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useState } from "react"
 
 interface HangoutSpotCardProps {
   spot: HangoutSpot
@@ -36,6 +37,8 @@ function getOpenStatus(openingHours: string) {
 }
 
 export function HangoutSpotCard({ spot, variant, onClick, onBack }: HangoutSpotCardProps) {
+  const [imageError, setImageError] = useState(false)
+  
   if (variant === "compact") {
     const openStatus = getOpenStatus(spot.openingHours)
     
@@ -92,8 +95,19 @@ export function HangoutSpotCard({ spot, variant, onClick, onBack }: HangoutSpotC
       </div>
 
       <div className="p-4 space-y-4">
-        <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-          <span className="text-gray-400 text-sm">Image placeholder</span>
+        <div className="w-full h-48 bg-gray-200 rounded-lg overflow-hidden">
+          {!imageError && spot.thumbnailUrl && spot.thumbnailUrl !== "/placeholder.svg" ? (
+            <img
+              src={spot.thumbnailUrl}
+              alt={spot.name}
+              className="w-full h-full object-cover"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <span className="text-gray-400 text-sm">No image available</span>
+            </div>
+          )}
         </div>
 
         <div>
