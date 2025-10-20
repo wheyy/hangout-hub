@@ -12,6 +12,9 @@ GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
 
 # Google Maps Map ID (optional - for custom styled maps)
 GOOGLE_MAPS_MAP_ID=your_map_id_here
+
+# Data.gov.sg HDB Carpark dataset
+NEXT_PUBLIC_HDB_CARPARK_RESOURCE_ID=d_23f946fa557947f93a8043bbef41dd09
 ```
 
 ## Getting Started
@@ -22,6 +25,10 @@ npm i
 ```
 
 2. Set up your environment variables in `.env`
+### HDB Carpark Integration
+
+- Fetch carpark availability from https://api.data.gov.sg/v1/transport/carpark-availability
+- Fetch static carpark coordinates/addresses from the CKAN datastore, convert SVY21 (x/y) to WGS84 (lat/lng), cache in-memory, and filter by the pin radius.
 
 3. Run the development server:
 ```bash

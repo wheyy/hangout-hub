@@ -15,6 +15,17 @@ export interface CarparkInfo {
 	address: string;
 	coordinates: [number, number];
 	type: ParkingType;
+	short_term_parking?: string;
+	free_parking?: string;
+	night_parking?: string;
+	car_park_decks?: string;
+	gantry_height?: string;
+	car_park_basement?: string;
+	source?: "hdb" | "commercial"; // distinguish HDB vs commercial/mall carparks
+	weekday_rate_1?: string;
+	weekday_rate_2?: string;
+	saturday_rate?: string;
+	sunday_publicholiday_rate?: string;
 }
 
 // In-memory cache of HDB carpark info (coords + address)
@@ -73,6 +84,12 @@ async function fetchHdbCarparkInfoAll(): Promise<CarparkInfo[]> {
 				address,
 				coordinates: [lng, lat],
 				type: typeEnum,
+				short_term_parking: r.short_term_parking || r.short_term_parking_charges,
+				free_parking: r.free_parking,
+				night_parking: r.night_parking,
+				car_park_decks: r.car_park_decks,
+				gantry_height: r.gantry_height,
+				car_park_basement: r.car_park_basement,
 			});
 		}
 

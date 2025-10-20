@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { ChevronLeft, ChevronRight, ParkingSquare, Filter } from "lucide-react"
+import { ChevronLeft, ChevronRight, ParkingSquare, Filter, ChevronDown, ChevronUp } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
@@ -10,14 +10,20 @@ interface ParkingDrawerProps {
   isOpen: boolean;
   onToggle: () => void;
   carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>;
+  onSelect?: (info: CarparkInfo, availability?: CarparkAvailability) => void;
 }
 
 
-export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps) {
+export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingDrawerProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [selectedColors, setSelectedColors] = useState<string[]>([])
+  const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const toggleCard = (carpark_number: string) => {
+    setExpandedCard(expandedCard === carpark_number ? null : carpark_number)
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -66,6 +72,7 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
     const color = getAvailabilityColorCategory(availability)
     return selectedColors.includes(color)
   })
+  
   return (
     <div
       data-drawer="parking"
@@ -137,10 +144,10 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-3 pb-20" style={{ direction: 'ltr' }}>
+        <div className="flex-1 overflow-y-auto pt-3 pb-20" style={{ direction: 'rtl' }}>
           <div className="space-y-2 px-3" style={{ direction: 'ltr' }}>
           {filteredCarparks && filteredCarparks.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {filteredCarparks.map(({ info, availability }) => {
                 // Calculate availability percentage and determine color
                 let availabilityColor = "bg-gray-200"
@@ -158,29 +165,94 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
                   }
                 }
 
+                const isExpanded = expandedCard === info.carpark_number
+
                 return (
-                  <li key={info.carpark_number} className="border rounded-lg p-3 shadow-sm">
-                    <div className="font-semibold text-gray-800">{info.address}</div>
-                    <div className="text-xs text-gray-500 mb-1">Code: {info.carpark_number}</div>
-                    <div className="text-xs text-gray-500 mb-2">Type: {ParkingType[info.type]}</div>
-                    {availability ? (
-                      <div className="mt-2">
-                        {/* Visual availability indicator */}
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className={`w-4 h-4 rounded-full ${availabilityColor}`}></div>
-                          <span className="text-sm font-semibold text-gray-700">
-                            {availabilityPercentage.toFixed(0)}% Available
-                          </span>
+                  <li key={info.carpark_number} className="border rounded-lg shadow-sm">
+                    <div 
+                      className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => onSelect?.(info, availability)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">{info.address}</div>
+                          <div className="text-xs text-gray-500 mb-1">Code: {info.carpark_number}</div>
+                          <div className="text-xs text-gray-500 mb-2">Type: {ParkingType[info.type]}</div>
+                          {availability ? (
+                            <div className="mt-2">
+                              {/* Visual availability indicator */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className={`w-4 h-4 rounded-full ${availabilityColor}`}></div>
+                                <span className="text-sm font-semibold text-gray-700">
+                                  {availabilityPercentage.toFixed(0)}% Available
+                                </span>
+                              </div>
+                              {/* Lots information */}
+                              <div className="text-sm">
+                                <span className="font-bold text-gray-800">{availability.lots_available}</span>
+                                <span className="text-gray-600"> / {availability.total_lots} lots</span>
+                                <span className="ml-2 text-xs text-gray-400">({availability.lot_type})</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400">Availability data not found</div>
+                          )}
                         </div>
-                        {/* Lots information */}
-                        <div className="text-sm">
-                          <span className="font-bold text-gray-800">{availability.lots_available}</span>
-                          <span className="text-gray-600"> / {availability.total_lots} lots</span>
-                          <span className="ml-2 text-xs text-gray-400">({availability.lot_type})</span>
-                        </div>
+                        <button
+                          type="button"
+                          aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                          className="ml-2 flex-shrink-0 p-1 rounded hover:bg-gray-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleCard(info.carpark_number)
+                          }}
+                        >
+                          {isExpanded ? (
+                            <ChevronUp className="w-5 h-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="w-5 h-5 text-gray-400" />
+                          )}
+                        </button>
                       </div>
-                    ) : (
-                      <div className="text-xs text-gray-400">Availability data not found</div>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="px-3 pb-3 pt-0 border-t border-gray-100 bg-gray-50">
+                        <div className="text-sm font-semibold text-gray-700 mt-2 mb-1">Parking Rates</div>
+                        {info.short_term_parking ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Short-term: </span>{info.short_term_parking}
+                          </div>
+                        ) : null}
+                        {info.free_parking ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Free parking: </span>{info.free_parking}
+                          </div>
+                        ) : null}
+                        {info.night_parking ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Night parking: </span>{info.night_parking}
+                          </div>
+                        ) : null}
+                        {info.car_park_decks ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Decks: </span>{info.car_park_decks}
+                          </div>
+                        ) : null}
+                        {info.gantry_height ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Gantry height: </span>{info.gantry_height}
+                          </div>
+                        ) : null}
+                        {info.car_park_basement ? (
+                          <div className="text-xs text-gray-600 mb-1">
+                            <span className="font-medium">Basement: </span>{info.car_park_basement}
+                          </div>
+                        ) : null}
+                        {!info.short_term_parking && !info.free_parking && !info.night_parking && (
+                          <div className="text-xs text-gray-400 italic">No rate information available</div>
+                        )}
+                      </div>
                     )}
                   </li>
                 )
@@ -192,10 +264,10 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
                 <ParkingSquare className="w-8 h-8 text-gray-400" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {carparks && carparks.length > 0 ? "No matching carparks" : "No carparks found in area"}
+                {filteredCarparks && filteredCarparks.length > 0 ? "No matching carparks" : "No carparks found in area"}
               </h3>
               <p className="text-sm text-gray-500">
-                {carparks && carparks.length > 0 
+                {filteredCarparks && filteredCarparks.length > 0 
                   ? "Try adjusting your filters to see more results"
                   : "Try moving the pin or zooming out"}
               </p>
@@ -205,5 +277,5 @@ export function ParkingDrawer({ isOpen, onToggle, carparks }: ParkingDrawerProps
         </div>
       </div>
     </div>
-  );
+  )
 }
