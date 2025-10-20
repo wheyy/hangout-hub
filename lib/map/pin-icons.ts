@@ -49,7 +49,10 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
   circle.style.height = "24px"
   circle.style.borderRadius = "50%"
   const unselectedColor = baseColor || "#EF4444"
-  circle.style.backgroundColor = isSelected ? "#F97316" : unselectedColor
+  // Ensure the color is applied with !important to prevent overrides
+  const finalColor = isSelected ? "#F97316" : unselectedColor
+  circle.style.backgroundColor = finalColor
+  circle.style.setProperty("background-color", finalColor, "important")
   circle.style.border = isSelected ? "3px solid white" : "2px solid white"
   circle.style.boxShadow = isSelected 
     ? "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)" 
