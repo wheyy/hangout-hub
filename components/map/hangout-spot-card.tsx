@@ -11,6 +11,7 @@ interface HangoutSpotCardProps {
   variant: "compact" | "expanded"
   onClick?: () => void
   onBack?: () => void
+  onGetDirections?: (spot: HangoutSpot) => void
 }
 
 function getPriceRangeColor(priceRange: string) {
@@ -36,7 +37,7 @@ function getOpenStatus(openingHours: string) {
   }
 }
 
-export function HangoutSpotCard({ spot, variant, onClick, onBack }: HangoutSpotCardProps) {
+export function HangoutSpotCard({ spot, variant, onClick, onBack, onGetDirections }: HangoutSpotCardProps) {
   const [imageError, setImageError] = useState(false)
   
   if (variant === "compact") {
@@ -149,7 +150,7 @@ export function HangoutSpotCard({ spot, variant, onClick, onBack }: HangoutSpotC
           </div>
         </div>
 
-        <Button className="w-full" disabled>
+        <Button className="w-full" onClick={() => onGetDirections?.(spot)}>
           Get Directions
         </Button>
       </div>

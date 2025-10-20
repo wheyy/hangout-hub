@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { MapProviderComponent, useMap } from "@/lib/map/map-provider"
 import { Navbar } from "@/components/navbar"
 import { MapSearchBar } from "@/components/map/map-search-bar"
@@ -10,6 +10,7 @@ import { fetchCarparkAvailability, getCarparksWithinRadiusAsync, CarparkInfo, Ca
 import { ErrorPopup } from "@/components/map/error-popup"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-places"
+import { getDirections, DirectionsRoute, formatDistance, formatDuration } from "@/lib/services/osrm-directions"
 
 // Cache for Singapore boundary data
 let singaporeBoundaryCache: any = null
@@ -83,6 +84,45 @@ export function MapInterface() {
   const [searchBarValue, setSearchBarValue] = useState("")
   const [hasSearchPin, setHasSearchPin] = useState(false)
   const [carparks, setCarparks] = useState<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>>([])
+  const [selectedCarpark, setSelectedCarpark] = useState<string | null>(null)
+  
+  // Directions state
+  const [directionsMode, setDirectionsMode] = useState(false)
+  const [fromLocation, setFromLocation] = useState("")
+  const [toLocation, setToLocation] = useState("")
+  const [fromCoords, setFromCoords] = useState<[number, number] | null>(null)
+  const [toCoords, setToCoords] = useState<[number, number] | null>(null)
+  const [currentRoute, setCurrentRoute] = useState<DirectionsRoute | null>(null)
+
+  // Watch for manual changes in location text to clear coordinates and route
+  const previousFromLocation = useRef(fromLocation)
+  const previousToLocation = useRef(toLocation)
+
+  useEffect(() => {
+    // Check if text was manually changed (not just set programmatically)
+    if (previousFromLocation.current !== fromLocation && currentRoute) {
+      // User changed FROM location - need to clear coordinates for re-geocoding
+      setFromCoords(null)
+      if (map) {
+        map.clearAll()
+      }
+      setCurrentRoute(null)
+    }
+    previousFromLocation.current = fromLocation
+  }, [fromLocation, currentRoute, map])
+
+  useEffect(() => {
+    // Check if text was manually changed (not just set programmatically)
+    if (previousToLocation.current !== toLocation && currentRoute) {
+      // User changed TO location - need to clear coordinates for re-geocoding
+      setToCoords(null)
+      if (map) {
+        map.clearAll()
+      }
+      setCurrentRoute(null)
+    }
+    previousToLocation.current = toLocation
+  }, [toLocation, currentRoute, map])
 
   useEffect(() => {
     if (!map) return
@@ -128,6 +168,7 @@ export function MapInterface() {
           coordinates: info.coordinates,
           title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
           color: "#04c7f8", // blue for carparks
+          onClick: () => handleCarparkSelect(info, availability),
         })
       })
       // Show the parking drawer when we have results
@@ -233,6 +274,104 @@ export function MapInterface() {
     
     // Zoom to the selected carpark
     map.setCenter(info.coordinates[0], info.coordinates[1], 17)
+    
+    // Set as selected carpark and open the drawer
+    setSelectedCarpark(info.carpark_number)
+    setParkingDrawerOpen(true)
+  }
+
+  const handleCarparkGetDirections = async (info: CarparkInfo) => {
+    // Enter directions mode with the carpark as destination
+    setDirectionsMode(true)
+    setToLocation(info.address)
+    setToCoords(info.coordinates)
+    
+    // Try to use user's current location as starting point
+    if (navigator.geolocation) {
+      setLoading(true)
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const coords: [number, number] = [position.coords.longitude, position.coords.latitude]
+          setFromCoords(coords)
+          setFromLocation(`Current Location (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`)
+          
+          // Automatically trigger directions search
+          if (!map) {
+            setLoading(false)
+            return
+          }
+
+          try {
+            // Get directions from OSRM
+            const response = await getDirections({
+              coordinates: [coords, info.coordinates],
+              profile: 'car',
+              overview: 'full',
+              steps: true,
+              alternatives: true
+            })
+
+            if (response.routes && response.routes.length > 0) {
+              const route = response.routes[0]
+              setCurrentRoute(route)
+
+              // Clear existing markers and routes
+              map.clearAll()
+
+              // Add start marker (blue)
+              map.addMarker({
+                id: 'route-start',
+                coordinates: coords,
+                title: 'Start',
+                color: '#3B82F6'
+              })
+
+              // Add end marker (red)
+              map.addMarker({
+                id: 'route-end',
+                coordinates: info.coordinates,
+                title: 'Destination',
+                color: '#EF4444'
+              })
+
+              // Draw the route
+              map.addRoute({
+                id: 'main-route',
+                coordinates: route.geometry.coordinates,
+                color: '#3B82F6',
+                width: 5
+              })
+
+              // Fit map to show entire route
+              const allCoords = route.geometry.coordinates
+              const lngs = allCoords.map(c => c[0])
+              const lats = allCoords.map(c => c[1])
+              const bounds: [number, number, number, number] = [
+                Math.min(...lngs),
+                Math.min(...lats),
+                Math.max(...lngs),
+                Math.max(...lats)
+              ]
+              map.fitBounds(bounds)
+
+              console.log(`Route to carpark: ${formatDistance(route.distance)}, ${formatDuration(route.duration)}`)
+            }
+          } catch (err) {
+            console.error("Directions error:", err)
+            setError(err instanceof Error ? err.message : "Failed to get directions")
+          } finally {
+            setLoading(false)
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error)
+          setError("Could not get your current location. Please enter a starting point manually.")
+          setLoading(false)
+        }
+      )
+    } else {
+      setError("Geolocation is not supported by your browser. Please enter a starting point manually.")
+    }
   }
 
   const handlePinButtonClick = async () => {
@@ -265,6 +404,328 @@ export function MapInterface() {
     setError(null)
   }
 
+  const handleGetDirections = async (spot: HangoutSpot) => {
+    // Enter directions mode with the selected spot as destination
+    setDirectionsMode(true)
+    setToLocation(spot.name)
+    setToCoords(spot.coordinates)
+
+    // Try to use user's current location as starting point
+    if (navigator.geolocation) {
+      setLoading(true)
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const coords: [number, number] = [position.coords.longitude, position.coords.latitude]
+          setFromCoords(coords)
+          setFromLocation(`Current Location (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`)
+
+          // Automatically trigger directions search
+          if (!map) {
+            setLoading(false)
+            return
+          }
+
+          try {
+            // Get directions from OSRM
+            const response = await getDirections({
+              coordinates: [coords, spot.coordinates],
+              profile: 'car',
+              overview: 'full',
+              steps: true,
+              alternatives: true
+            })
+
+            if (response.routes && response.routes.length > 0) {
+              const route = response.routes[0]
+              setCurrentRoute(route)
+
+              // Clear existing markers and routes
+              map.clearAll()
+
+              // Add start marker (blue)
+              map.addMarker({
+                id: 'route-start',
+                coordinates: coords,
+                title: 'Start',
+                color: '#3B82F6'
+              })
+
+              // Add end marker (red)
+              map.addMarker({
+                id: 'route-end',
+                coordinates: spot.coordinates,
+                title: 'Destination',
+                color: '#EF4444'
+              })
+
+              // Draw the route
+              map.addRoute({
+                id: 'main-route',
+                coordinates: route.geometry.coordinates,
+                color: '#3B82F6',
+                width: 5
+              })
+
+              // Fit map to show entire route
+              const allCoords = route.geometry.coordinates
+              const lngs = allCoords.map(c => c[0])
+              const lats = allCoords.map(c => c[1])
+              const bounds: [number, number, number, number] = [
+                Math.min(...lngs),
+                Math.min(...lats),
+                Math.max(...lngs),
+                Math.max(...lats)
+              ]
+              map.fitBounds(bounds)
+
+              console.log(`Route to ${spot.name}: ${formatDistance(route.distance)}, ${formatDuration(route.duration)}`)
+
+              // Fetch carparks near the destination
+              try {
+                const carparkAvailabilities = await fetchCarparkAvailability()
+                const carparkInfos = await getCarparksWithinRadiusAsync(spot.coordinates, 500)
+
+                // Merge info and availability
+                const carparksWithAvail = carparkInfos.map((info) => ({
+                  info,
+                  availability: carparkAvailabilities.find((a) => a.carpark_number === info.carpark_number),
+                }))
+
+                setCarparks(carparksWithAvail)
+
+                // Add carpark markers to the map
+                carparksWithAvail.forEach(({ info, availability }) => {
+                  map.addMarker({
+                    id: `carpark-${info.carpark_number}`,
+                    coordinates: info.coordinates,
+                    title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
+                    color: "#04c7f8", // blue for carparks
+                    onClick: () => handleCarparkSelect(info, availability),
+                  })
+                })
+
+                // Open the parking drawer to show available parking
+                setParkingDrawerOpen(true)
+              } catch (carparkError) {
+                console.error("Error fetching carparks:", carparkError)
+                // Don't fail the entire direction request if carpark fetch fails
+              }
+            }
+          } catch (err) {
+            console.error("Directions error:", err)
+            setError(err instanceof Error ? err.message : "Failed to get directions")
+          } finally {
+            setLoading(false)
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error)
+          setError("Could not get your current location. Please enter a starting point manually.")
+          setLoading(false)
+        }
+      )
+    } else {
+      setError("Geolocation is not supported by your browser. Please enter a starting point manually.")
+    }
+  }
+
+  const handleDirectionsSearch = async () => {
+    if (!map || !fromLocation || !toLocation) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      // If we don't have coordinates yet, geocode the addresses
+      let startCoords = fromCoords
+      let endCoords = toCoords
+
+      if (!startCoords) {
+        const fromResult = await GooglePlacesService.searchPlace(fromLocation)
+        if (fromResult) {
+          startCoords = [fromResult.geometry.location.lng, fromResult.geometry.location.lat]
+          setFromCoords(startCoords)
+        }
+      }
+
+      if (!endCoords) {
+        const toResult = await GooglePlacesService.searchPlace(toLocation)
+        if (toResult) {
+          endCoords = [toResult.geometry.location.lng, toResult.geometry.location.lat]
+          setToCoords(endCoords)
+        }
+      }
+
+      if (!startCoords || !endCoords) {
+        setError("Could not find one or both locations")
+        return
+      }
+
+      // Get directions from OSRM
+      const response = await getDirections({
+        coordinates: [startCoords, endCoords],
+        profile: 'car',
+        overview: 'full',
+        steps: true,
+        alternatives: true
+      })
+
+      if (response.routes && response.routes.length > 0) {
+        const route = response.routes[0]
+        setCurrentRoute(route)
+
+        // Clear existing markers and routes
+        map.clearAll()
+
+        // Add start marker (blue)
+        map.addMarker({
+          id: 'route-start',
+          coordinates: startCoords,
+          title: 'Start',
+          color: '#3B82F6'
+        })
+
+        // Add end marker (red)
+        map.addMarker({
+          id: 'route-end',
+          coordinates: endCoords,
+          title: 'Destination',
+          color: '#EF4444'
+        })
+
+        // Draw the route
+        map.addRoute({
+          id: 'main-route',
+          coordinates: route.geometry.coordinates,
+          color: '#3B82F6',
+          width: 5
+        })
+
+        // Fit map to show entire route
+        const allCoords = route.geometry.coordinates
+        const lngs = allCoords.map(c => c[0])
+        const lats = allCoords.map(c => c[1])
+        const bounds: [number, number, number, number] = [
+          Math.min(...lngs),
+          Math.min(...lats),
+          Math.max(...lngs),
+          Math.max(...lats)
+        ]
+        map.fitBounds(bounds)
+
+        console.log(`Route found: ${formatDistance(route.distance)}, ${formatDuration(route.duration)}`)
+
+        // Fetch carparks near the destination
+        try {
+          const carparkAvailabilities = await fetchCarparkAvailability()
+          const carparkInfos = await getCarparksWithinRadiusAsync(endCoords, 500)
+          
+          // Merge info and availability
+          const carparksWithAvail = carparkInfos.map((info) => ({
+            info,
+            availability: carparkAvailabilities.find((a) => a.carpark_number === info.carpark_number),
+          }))
+          
+          setCarparks(carparksWithAvail)
+          
+          // Add carpark markers to the map
+          carparksWithAvail.forEach(({ info, availability }) => {
+            map.addMarker({
+              id: `carpark-${info.carpark_number}`,
+              coordinates: info.coordinates,
+              title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
+              color: "#04c7f8", // blue for carparks
+              onClick: () => handleCarparkSelect(info, availability),
+            })
+          })
+
+          // Open the parking drawer to show available parking
+          setParkingDrawerOpen(true)
+        } catch (carparkError) {
+          console.error("Error fetching carparks:", carparkError)
+          // Don't fail the entire direction request if carpark fetch fails
+        }
+      }
+    } catch (err) {
+      console.error("Directions error:", err)
+      setError(err instanceof Error ? err.message : "Failed to get directions")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelDirections = () => {
+    setDirectionsMode(false)
+    setFromLocation("")
+    setToLocation("")
+    setFromCoords(null)
+    setToCoords(null)
+    setCurrentRoute(null)
+    setHasSearchPin(false) // Ensure pin button returns
+    if (map) {
+      map.clearAll()
+    }
+  }
+
+  const handleToggleDirectionsMode = () => {
+    if (directionsMode) {
+      // Cancel directions mode
+      handleCancelDirections()
+    } else {
+      // Enter directions mode
+      setDirectionsMode(true)
+      
+      // Try to use user's current location as starting point
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const coords: [number, number] = [position.coords.longitude, position.coords.latitude]
+            setFromCoords(coords)
+            setFromLocation(`${coords[1].toFixed(4)}, ${coords[0].toFixed(4)}`)
+          },
+          (error) => {
+            console.error("Geolocation error:", error)
+          }
+        )
+      }
+    }
+  }
+
+  const handleUseCurrentLocation = () => {
+    if (navigator.geolocation) {
+      setLoading(true)
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords: [number, number] = [position.coords.longitude, position.coords.latitude]
+          setFromCoords(coords)
+          setFromLocation(`Current Location (${coords[1].toFixed(4)}, ${coords[0].toFixed(4)})`)
+          setLoading(false)
+        },
+        (error) => {
+          console.error("Geolocation error:", error)
+          setError("Could not get your current location. Please check your browser permissions.")
+          setLoading(false)
+        }
+      )
+    } else {
+      setError("Geolocation is not supported by your browser")
+    }
+  }
+
+  const handleClearCoordinates = (field: 'from' | 'to') => {
+    if (field === 'from') {
+      setFromCoords(null)
+    } else {
+      setToCoords(null)
+    }
+    
+    // Clear the route and markers when coordinates are cleared
+    if (map) {
+      map.clearAll()
+    }
+    setCurrentRoute(null)
+  }
+
   if (!isLoaded) return null
 
   return (
@@ -273,23 +734,36 @@ export function MapInterface() {
         onSearch={handleSearch}
         value={searchBarValue}
         onValueChange={setSearchBarValue}
-        showPinButton={!hasSearchPin}
+        showPinButton={!hasSearchPin && !directionsMode}
         onPinButtonClick={handlePinButtonClick}
+        directionsMode={directionsMode}
+        fromValue={fromLocation}
+        toValue={toLocation}
+        onFromChange={setFromLocation}
+        onToChange={setToLocation}
+        onDirectionsSearch={handleDirectionsSearch}
+        onCancelDirections={handleCancelDirections}
+        onToggleDirectionsMode={handleToggleDirectionsMode}
+        onUseCurrentLocation={handleUseCurrentLocation}
+        onClearCoordinates={handleClearCoordinates}
       />
       <HangoutDrawer
         spots={spots}
         loading={loading}
         selectedSpot={selectedSpot}
-        isOpen={hangoutDrawerOpen}
+        isOpen={hangoutDrawerOpen && !directionsMode}
         onToggle={handleToggleHangoutDrawer}
         onCardClick={handleCardClick}
         onBack={handleBack}
+        onGetDirections={handleGetDirections}
       />
       <ParkingDrawer
         isOpen={parkingDrawerOpen}
         onToggle={handleToggleParkingDrawer}
         carparks={carparks}
         onSelect={handleCarparkSelect}
+        onGetDirections={handleCarparkGetDirections}
+        selectedCarparkId={selectedCarpark}
       />
       {error && (
         <ErrorPopup

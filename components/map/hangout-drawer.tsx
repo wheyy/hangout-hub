@@ -13,6 +13,7 @@ interface HangoutDrawerProps {
   onToggle: () => void
   onCardClick: (spot: HangoutSpot) => void
   onBack: () => void
+  onGetDirections?: (spot: HangoutSpot) => void
 }
 
 export function HangoutDrawer({
@@ -22,7 +23,8 @@ export function HangoutDrawer({
   isOpen,
   onToggle,
   onCardClick,
-  onBack
+  onBack,
+  onGetDirections
 }: HangoutDrawerProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [priceRange, setPriceRange] = useState<string[]>([])
@@ -147,6 +149,7 @@ export function HangoutDrawer({
             spot={selectedSpot}
             variant="expanded"
             onBack={onBack}
+            onGetDirections={onGetDirections}
           />
         ) : (
           <>

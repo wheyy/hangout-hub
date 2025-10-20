@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { ChevronLeft, ChevronRight, ParkingSquare, Filter, ChevronDown, ChevronUp } from "lucide-react"
+import { ChevronLeft, ChevronRight, ParkingSquare, Filter, ChevronDown, ChevronUp, Navigation } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
@@ -11,15 +11,24 @@ interface ParkingDrawerProps {
   onToggle: () => void;
   carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>;
   onSelect?: (info: CarparkInfo, availability?: CarparkAvailability) => void;
+  onGetDirections?: (info: CarparkInfo) => void;
+  selectedCarparkId?: string | null;
 }
 
 
-export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingDrawerProps) {
+export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirections, selectedCarparkId }: ParkingDrawerProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const [expandedCard, setExpandedCard] = useState<string | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Auto-expand selected carpark when selectedCarparkId changes
+  useEffect(() => {
+    if (selectedCarparkId) {
+      setExpandedCard(selectedCarparkId)
+    }
+  }, [selectedCarparkId])
 
   const toggleCard = (carpark_number: string) => {
     setExpandedCard(expandedCard === carpark_number ? null : carpark_number)
@@ -166,11 +175,12 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingD
                 }
 
                 const isExpanded = expandedCard === info.carpark_number
+                const isSelected = selectedCarparkId === info.carpark_number
 
                 return (
-                  <li key={info.carpark_number} className="border rounded-lg shadow-sm">
+                  <li key={info.carpark_number} className={`border rounded-lg shadow-sm ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
                     <div 
-                      className="p-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                      className={`p-3 cursor-pointer hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}
                       onClick={() => onSelect?.(info, availability)}
                     >
                       <div className="flex items-start justify-between">
@@ -251,6 +261,20 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingD
                         ) : null}
                         {!info.short_term_parking && !info.free_parking && !info.night_parking && (
                           <div className="text-xs text-gray-400 italic">No rate information available</div>
+                        )}
+                        
+                        {/* Get Directions Button */}
+                        {onGetDirections && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onGetDirections(info)
+                            }}
+                            className="w-full mt-3 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Navigation className="w-4 h-4" />
+                            Get Directions
+                          </button>
                         )}
                       </div>
                     )}
