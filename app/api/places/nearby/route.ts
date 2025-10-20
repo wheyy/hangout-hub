@@ -60,25 +60,51 @@ export async function GET(request: NextRequest) {
     }
 
     // Convert to old format for compatibility
-    const places = data.places.map((place: any) => ({
-      place_id: place.id,
-      name: place.displayName?.text || place.displayName,
-      types: place.types || [],
-      geometry: {
-        location: {
-          lat: place.location?.latitude || 0,
-          lng: place.location?.longitude || 0
+    const places = data.places.map((place: any) => {
+      // Convert new API priceLevel (string enum) to old API price_level (0-4)
+      let priceLevelNum = 0
+      if (place.priceLevel) {
+        switch (place.priceLevel) {
+          case 'PRICE_LEVEL_FREE':
+            priceLevelNum = 0
+            break
+          case 'PRICE_LEVEL_INEXPENSIVE':
+            priceLevelNum = 1
+            break
+          case 'PRICE_LEVEL_MODERATE':
+            priceLevelNum = 2
+            break
+          case 'PRICE_LEVEL_EXPENSIVE':
+            priceLevelNum = 3
+            break
+          case 'PRICE_LEVEL_VERY_EXPENSIVE':
+            priceLevelNum = 4
+            break
+          default:
+            priceLevelNum = 0
         }
-      },
-      rating: place.rating || 0,
-      user_ratings_total: place.userRatingCount || 0,
-      price_level: place.priceLevel || 0,
-      opening_hours: place.currentOpeningHours || place.regularOpeningHours,
-      current_opening_hours: place.currentOpeningHours,
-      regular_opening_hours: place.regularOpeningHours,
-      photos: place.photos,
-      formatted_address: place.formattedAddress || place.vicinity || ""
-    }))
+      }
+
+      return {
+        place_id: place.id,
+        name: place.displayName?.text || place.displayName,
+        types: place.types || [],
+        geometry: {
+          location: {
+            lat: place.location?.latitude || 0,
+            lng: place.location?.longitude || 0
+          }
+        },
+        rating: place.rating || 0,
+        user_ratings_total: place.userRatingCount || 0,
+        price_level: priceLevelNum,
+        opening_hours: place.currentOpeningHours || place.regularOpeningHours,
+        current_opening_hours: place.currentOpeningHours,
+        regular_opening_hours: place.regularOpeningHours,
+        photos: place.photos,
+        formatted_address: place.formattedAddress || place.vicinity || ""
+      }
+    })
 
     return NextResponse.json(places)
   } catch (error) {

@@ -36,6 +36,30 @@ export async function GET(request: NextRequest) {
     //   data?.primaryType ??
     //   (Array.isArray(data?.types) ? data.types[0] : "undefined")
 
+    // Convert new API priceLevel (string enum) to old API price_level (0-4)
+    let priceLevelNum = 0
+    if (data.priceLevel) {
+      switch (data.priceLevel) {
+        case 'PRICE_LEVEL_FREE':
+          priceLevelNum = 0
+          break
+        case 'PRICE_LEVEL_INEXPENSIVE':
+          priceLevelNum = 1
+          break
+        case 'PRICE_LEVEL_MODERATE':
+          priceLevelNum = 2
+          break
+        case 'PRICE_LEVEL_EXPENSIVE':
+          priceLevelNum = 3
+          break
+        case 'PRICE_LEVEL_VERY_EXPENSIVE':
+          priceLevelNum = 4
+          break
+        default:
+          priceLevelNum = 0
+      }
+    }
+
     // Convert to old format for compatibility
     const result = {
       place_id: data.id,
@@ -49,7 +73,7 @@ export async function GET(request: NextRequest) {
       },
       rating: data.rating || 0,
       user_ratings_total: data.userRatingCount || 0,
-      price_level: data.priceLevel || 0,
+      price_level: priceLevelNum,
       opening_hours: data.currentOpeningHours || data.regularOpeningHours,
       current_opening_hours: data.currentOpeningHours,
       regular_opening_hours: data.regularOpeningHours,

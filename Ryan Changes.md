@@ -103,3 +103,146 @@
     - **Free map navigation** while maintaining search restrictions
     - **Clear error messages:** "Search is outside the boundary"
     - **Performance optimized** with boundary data caching
+
+4. Implemented Comprehensive Filter System for Hangout Drawer
+- **File: `components/map/hangout-drawer.tsx`**
+    - **Added filter state management:**
+        - `priceRange` - Array of selected price levels (0-4: Free to Very Expensive)
+        - `rating` - Array of selected minimum ratings (3.0, 3.5, 4.0, 4.5+)
+        - `operatingHours` - String filter ("all", "openNow", "closedNow")
+        - `placeType` - Array of selected place categories
+    
+    - **Implemented filter dropdown UI:**
+        - Filter icon button in header next to hangout spot title
+        - Dropdown positioned from left edge (left-0)
+        - Four filter sections with clear labels
+        - **Price Range:** Multi-select checkboxes for $ to $$$$
+        - **Rating:** Multi-select buttons for 3.0+ to 4.5+ ratings
+        - **Operating Hours:** Radio buttons for All/Open Now/Closed Now
+        - **Type of Places:** Multi-select checkboxes for 12 categories
+    
+    - **Enhanced place type categories (expanded from 6 to 12):**
+        - restaurant, cafe, bar
+        - shopping_mall, tourist_attraction, park
+        - museum, art_gallery, night_club
+        - movie_theater, bowling_alley, amusement_park
+        - Displays as Title Case (e.g., "shopping_mall" → "Shopping Mall")
+    
+    - **Added click-outside handler:**
+        - Detects clicks outside dropdown to auto-close
+        - Excludes clicks within drawer using `data-drawer="hangout"` attribute
+        - Prevents dropdown from closing when clicking filter button
+        - Uses useRef and useEffect for event handling
+    
+    - **Implemented real-time filtering logic:**
+        - `filteredHangoutSpots` - Filters based on all active filters
+        - Price filter checks if spot's priceLevel is in selected range
+        - Rating filter checks if spot's rating >= any selected minimum
+        - Operating hours filter checks isOpenNow status
+        - Place type filter checks if spot's category matches selections
+        - Empty state message: "No hangout spots match the selected filters"
+    
+    - **Fixed scrollbar positioning:**
+        - Container uses `direction: 'rtl'` for left-side scrollbar
+        - Content uses `direction: 'ltr'` to restore normal text flow
+        - Scrollbar appears on inner edge (right side of left drawer)
+        - Prevents scrollbar from being hidden under dropdown
+
+5. Implemented Availability Filter System for Parking Drawer
+- **File: `components/map/parking-drawer.tsx`**
+    - **Added filter state management:**
+        - `selectedColors` - Array of selected availability colors (green, amber, red)
+    
+    - **Implemented availability color calculation:**
+        - `getAvailabilityColorCategory()` - Determines color based on percentage
+        - **Green:** ≥50% available lots
+        - **Amber:** 20-49% available lots
+        - **Red:** <20% available lots
+    
+    - **Implemented filter dropdown UI:**
+        - Filter icon button in header next to parking title
+        - Dropdown positioned from right edge (right-0)
+        - Three color options with visual indicators:
+            - Green circle with "High availability (≥50%)"
+            - Amber circle with "Medium availability (20-49%)"
+            - Red circle with "Low availability (<20%)"
+        - Multi-select checkboxes for each color category
+    
+    - **Added click-outside handler:**
+        - Same pattern as hangout drawer
+        - Uses `data-drawer="parking"` attribute for exclusion
+        - Allows both drawers' dropdowns to be open simultaneously
+    
+    - **Implemented real-time filtering logic:**
+        - `filteredCarparks` - Filters based on selected availability colors
+        - Calculates color category for each carpark
+        - Shows carparks matching any selected color
+        - Empty state message: "No carparks match the selected availability filters"
+    
+    - **Fixed scrollbar positioning:**
+        - Container uses `direction: 'rtl'` for left-side scrollbar
+        - Content uses `direction: 'ltr'` to restore normal text flow
+        - Scrollbar appears on inner edge (left side of right drawer)
+
+6. Fixed Google Places API Price Level Conversion
+- **File: `app/api/places/nearby/route.ts`**
+    - **Problem:** Google Places API (New) returns `priceLevel` as string enum instead of number
+    - **Solution:** Added conversion switch statement:
+        ```typescript
+        let priceLevelNum = 0;
+        switch (place.priceLevel) {
+          case 'PRICE_LEVEL_FREE': priceLevelNum = 0; break;
+          case 'PRICE_LEVEL_INEXPENSIVE': priceLevelNum = 1; break;
+          case 'PRICE_LEVEL_MODERATE': priceLevelNum = 2; break;
+          case 'PRICE_LEVEL_EXPENSIVE': priceLevelNum = 3; break;
+          case 'PRICE_LEVEL_VERY_EXPENSIVE': priceLevelNum = 4; break;
+        }
+        ```
+    - **Result:** Price levels now correctly display as $, $$, $$$, $$$$
+
+- **File: `app/api/places/details/route.ts`**
+    - Applied same price level enum-to-number conversion logic
+    - Ensures consistency between nearby search and detail view
+
+7. Enhanced UI Layout and Interactions
+- **Hangout Drawer Layout Changes:**
+    - Moved "Hangout Spot" title to left side of header
+    - Positioned filter icon at right side (where title used to be)
+    - Improved header spacing and alignment
+    - Filter dropdown doesn't interfere with scroll area
+
+- **Parking Drawer Layout Changes:**
+    - Maintained consistent header layout with hangout drawer
+    - Filter icon positioned at right side
+    - Proper spacing between title and filter button
+
+- **Simultaneous Dropdown Behavior:**
+    - Both drawers can have filter dropdowns open at same time
+    - Click-outside handlers use `data-drawer` attributes to prevent cross-interference
+    - Each dropdown only closes when clicking outside its own drawer
+
+- **Scrollbar Visual Improvements:**
+    - Visible on hover with smooth transitions
+    - Positioned on inside edges (between drawers and map)
+    - Thumb appears larger and more visible
+    - Prevents content from being hidden under dropdowns
+
+8. Filter UI Refinements
+- **Spacing and Layout:**
+    - Reduced gaps in rating button grid (`gap-1.5`)
+    - Adjusted padding for better fit (`px-1` for rating buttons)
+    - Consistent spacing between filter sections
+    - Proper padding in dropdown containers
+
+- **Visual Design:**
+    - Clear section labels with bottom borders
+    - Checkbox and button states with proper hover/active colors
+    - Color indicators for parking availability (filled circles)
+    - Responsive button sizing for different content lengths
+
+- **Accessibility:**
+    - Clear labels for all filter options
+    - Visual feedback on hover and selection
+    - Consistent interaction patterns across both drawers
+    - Empty state messages when no results match filters
+
