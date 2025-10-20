@@ -107,7 +107,7 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingD
 
           {/* Filter Dropdown */}
           {isFilterOpen && (
-            <div ref={dropdownRef} className="absolute left-0 right-8 top-[calc(100%+1px)] w-auto bg-white border-x border-b border-gray-200 rounded-b-xl shadow-2xl z-[1100] overflow-hidden">
+            <div ref={dropdownRef} className="absolute left-0 right-4 top-[calc(100%+1px)] w-auto bg-white border-x border-b border-gray-200 rounded-b-xl shadow-2xl z-[1100] overflow-hidden">
               <div>
                 {/* Availability Color Filter Section */}
                 <div className="p-4">
@@ -144,8 +144,8 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect }: ParkingD
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-3 pb-20" style={{ direction: 'rtl' }}>
-          <div className="space-y-2 px-3" style={{ direction: 'ltr' }}>
+        <div className="flex-1 overflow-y-auto pt-3 pb-20">
+          <div className="space-y-2 px-3">
           {filteredCarparks && filteredCarparks.length > 0 ? (
             <ul className="space-y-4">
               {filteredCarparks.map(({ info, availability }) => {
