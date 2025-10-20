@@ -3,8 +3,9 @@ import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
-import { Suspense } from "react"
+import { Suspense, useEffect } from "react"
 import "./globals.css"
+import { useUserStore } from "@/hooks/user-store"
 
 export const metadata: Metadata = {
   title: "Hangout Hub - Discover & Coordinate Meetups",
@@ -22,6 +23,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+    
   return (
     <html lang="en">
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>

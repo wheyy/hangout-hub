@@ -10,11 +10,12 @@ import { useState, useEffect, useMemo } from "react"
 import { CreateMeetupModal } from "@/components/meetup/create-meetup-modal"
 import { Navbar } from "@/components/navbar"
 import { InvitationCard } from "@/components/invitation-card"
-import { useUserStore } from "@/lib/mock-data"
+import { useUserStore } from "@/hooks/user-store"
 import { getInvitations, saveInvitations, getMeetups } from "@/lib/invitation-utils"
 import { Meetup } from "@/lib/data/meetup"
 import { Invitation } from "../../lib/data/invitation"
 import { ChevronDown, ChevronUp } from "lucide-react"; // Icons for dropdown toggle
+import { AuthGuard } from "@/components/auth-guard"
 
 
 export default function MeetupsPage() {
@@ -22,9 +23,11 @@ export default function MeetupsPage() {
   const [invitations, setInvitations] = useState<Invitation[]>([])
   // const [meetups, setMeetups] = useState<Meetup[]>([])
   const CURRENT_USER = useUserStore((s) => s.user); // Subscribe to changes
+  console.log("CURRENT_USER loaded at MeetupsPage():", CURRENT_USER);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false); // State to manage dropdown visibility
-  const meetups = useUserStore((s) => s.user.getMeetups());
-  
+  console.log("Rendering MeetupsPage, CURRENT_USER:", CURRENT_USER);
+  const meetups = CURRENT_USER?.getMeetups() ?? [];
+
   // ✅ Recalculate activeMeetups whenever meetups changes
   const activeMeetups = useMemo(() => 
     meetups.filter((meetup) => meetup.getStatus() === "active"),
@@ -41,15 +44,16 @@ export default function MeetupsPage() {
   useEffect(() => {
     setInvitations(getInvitations())  
     console.log("Fetching meetups for CURRENT_USER...");
-    const updatedMeetups = CURRENT_USER.getMeetups();
+    const updatedMeetups = CURRENT_USER?.getMeetups() ?? [];
     console.log("Updated meetups:", updatedMeetups);
     // setMeetups(updatedMeetups);
     console.log("Meetups new state:", meetups);
   }, [CURRENT_USER])
 
+
   // Filter invitations for current user
-  const receivedInvitations = invitations.filter((inv) => inv.recipientId === CURRENT_USER.id)
-  const sentInvitations = invitations.filter((inv) => inv.senderId === CURRENT_USER.id)
+  const receivedInvitations = invitations.filter((inv) => inv.recipientId === CURRENT_USER!.id)
+  const sentInvitations = invitations.filter((inv) => inv.senderId === CURRENT_USER!.id)
   const pendingReceived = receivedInvitations.filter((inv) => inv.status === "pending")
 
 
@@ -93,6 +97,7 @@ export default function MeetupsPage() {
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
@@ -306,5 +311,6 @@ export default function MeetupsPage() {
       {/* Create Meetup Modal */}
       <CreateMeetupModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)}/>
     </div>
+    </AuthGuard>
   )
 }

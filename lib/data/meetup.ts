@@ -13,11 +13,13 @@ import {
     updateDoc
   } from "firebase/firestore"; 
 
-import { loadUser, useUserStore } from "../mock-data";
+import { useUserStore } from "../../hooks/user-store";
+import { use } from "react";
 
 // Feel free to update this class, I did not vet the behaviours
 export class Meetup {
     private members: User[] = []
+    
     
     constructor(
         public id: string,
@@ -79,21 +81,50 @@ export class Meetup {
             }
             
             const data = meetupDoc.data();
+            const creator = await User.loadFromFirestore(data.creatorId);
 
+            // ✅ Parse dateTime carefully
+            let dateTime: Date;
+            
+            if (data.dateTime instanceof Date) {
+            // Already a Date object
+            dateTime = data.dateTime;
+            } else if (typeof data.dateTime === 'string') {
+            // ISO string
+            dateTime = new Date(data.dateTime);
+            } else if (data.dateTime?.seconds) {
+            // Firestore Timestamp
+            dateTime = new Date(data.dateTime.seconds * 1000);
+            } else {
+            console.error(`❌ Invalid dateTime format:`, data.dateTime);
+            return null;
+            }
+            
+            // ✅ Validate the date
+            if (isNaN(dateTime.getTime())) {
+            console.error(`❌ Invalid date after parsing:`, data.dateTime);
+            throw new Error("Invalid date format");
+            }
+            
+            console.log("✅ Parsed dateTime:", dateTime);
+
+            if (!creator) {
+                console.error(`❌ Creator ${data.creatorId} not found`);
+                throw new Error("Creator not found");
+            }
             const meetup = new Meetup(
                 meetupDoc.id,
                 data.title,
-                new Date(data.dateTime),
+                dateTime,
                 data.destination,
-                new User("u001", "CURRENT_MOCK_USER", "CURRENT_MOCK_USER@example.com", null) // Placeholder for creator | TODO: CHANGE TO BELOW
-                // User.searchFromFirestore(creator.id) // Need to fetch User object for creator
+                creator!
             );
             
             
             // TO BE IMPLEMENTED: Fetch users from user db
-            data.memberIds.forEach((memberId: string) => {
+            data.memberIds.forEach(async (memberId: string) => {
                 if (memberId !== meetup.creator.id) {
-                    const member = loadUser(memberId); // TODO: TEMP FUNCTION
+                    const member = await User.loadFromFirestore(memberId);
                     if (member) {
                         meetup.addMember(member);
                     }
@@ -268,6 +299,23 @@ export class Meetup {
         this.title = newTitle
         return true
     }
+
+    // deleteMeetup(): boolean {
+    //     try {
+    //       console.log("Deleting meetup:", this.id);
+    //       for (const member of this.members) {
+    //         console.log("Removing meetup for member:", member.getId());
+    //         member.removeMeetup(this);
+    //       }
+    //       this.members = [];
+    //       console.log(`Meetup ${this.title} deleted.`);
+    //       return true;
+    //     } catch (error) {
+    //       console.error("Error while deleting meetup:", error);
+    //       return false;
+    //     }
+    //   }
+    
 
     // deleteMeetup(): boolean {
     //     try {

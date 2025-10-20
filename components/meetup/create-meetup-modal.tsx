@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -12,7 +12,7 @@ import { Meetup } from "@/lib/data/meetup"
 import { useRouter } from "next/navigation"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { on } from "events"
-import { useUserStore } from "@/lib/mock-data"
+import { useUserStore } from "@/hooks/user-store"
 
 
 interface CreateMeetupModalProps {
@@ -31,7 +31,37 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
 
   const CURRENT_USER = useUserStore((s) => s.user);
   const router = useRouter();
+  const [countdown, setCountdown] = useState(10);
 
+
+  useEffect(() => {
+    if (!CURRENT_USER) {
+      // Countdown from 10 to 0
+      const interval = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            router.push("/auth/login");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000); // Update every second
+  
+      return () => clearInterval(interval);
+    }
+  }, [CURRENT_USER, router]);
+  
+  if (!CURRENT_USER) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-lg font-semibold">Unable to create meetup if not logged in.</p>
+        <p className="text-sm text-gray-600 mt-2">
+          Redirecting to login in {countdown} seconds...
+        </p>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
 

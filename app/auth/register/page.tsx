@@ -12,6 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { MapPin, Eye, EyeOff, Check } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { authService } from "@/lib/auth"
+import { AuthGuard } from "@/components/auth-guard"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -61,16 +63,10 @@ export default function RegisterPage() {
     }
 
     try {
-      // TODO: Implement actual registration with Supabase
-      console.log("[v0] Registration attempt:", { name: formData.name, email: formData.email })
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // For now, just redirect to search page
-      router.push("/search")
+      await authService.signUp(formData.email, formData.password, formData.name)
+      router.push("/meetups")
     } catch (err) {
-      setError("Registration failed. Please try again.")
+      setError(err instanceof Error ? err.message : "Registration failed. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -81,6 +77,7 @@ export default function RegisterPage() {
   }
 
   return (
+    <AuthGuard requireAuth={false}>
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Header */}
@@ -237,5 +234,6 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   )
 }

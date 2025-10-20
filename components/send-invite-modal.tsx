@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Mail, X, Send, Search, Check } from "lucide-react"
-import { MOCK_USERS, useUserStore } from "@/lib/mock-data"
+import { MOCK_USERS, useUserStore } from "@/hooks/user-store"
 import { Meetup } from "@/lib/data/meetup"
 import { User } from "@/lib/data/user"
 import { Invitation } from "@/lib/data/invitation"
@@ -25,8 +25,8 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
   const CURRENT_USER = useUserStore((s) => s.user);
   
   // Filter users: exclude current user, existing members, and apply search
-  const availableUsers = MOCK_USERS.filter((user) => {
-    if (user.id === CURRENT_USER.id) return false // Exclude self
+  const availableUsers = MOCK_USERS.filter((user: User) => {
+    if (user.id === CURRENT_USER!.id) return false // Exclude self
     if (meetup.getMembers().some((member) => member.id === user.id)) return false // Exclude existing members
     if (searchQuery && !user.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !user.email.toLowerCase().includes(searchQuery.toLowerCase())) return false
@@ -57,9 +57,9 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
       meetupTitle: meetup.title,
       destination: meetup.destination,
       dateTime: meetup.dateTime,
-      senderId: CURRENT_USER.id,
-      senderName: CURRENT_USER.name,
-      senderEmail: CURRENT_USER.email,
+      senderId: CURRENT_USER!.id,
+      senderName: CURRENT_USER!.name,
+      senderEmail: CURRENT_USER!.email,
       recipientId: user.id,
       recipientEmail: user.email,
       recipientName: user.name,
@@ -143,7 +143,7 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
                   {searchQuery ? "No users found matching your search." : "No available users to invite."}
                 </p>
               ) : (
-                availableUsers.map((user) => {
+                availableUsers.map((user:User) => {
                   const isSelected = selectedUsers.find((u) => u.id === user.id)
                   return (
                     <div

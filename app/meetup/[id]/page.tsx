@@ -10,7 +10,7 @@ import { GroupManagement } from "@/components/group-management"
 import { LiveMapView } from "@/components/live-map-view"
 import { SendInviteModal } from "@/components/send-invite-modal"
 import { Meetup } from "@/lib/data/meetup"
-import { useUserStore } from "@/lib/mock-data"
+import { useUserStore } from "@/hooks/user-store"
 import { useRouter } from "next/navigation"
 import { DeleteMeetupModal } from "@/components/meetup/delete-meetup-modal"
 
@@ -34,9 +34,14 @@ export default function MeetupPage({ params }: MeetupPageProps) {
   const [meetup, setMeetup] = useState<Meetup | null>(null)
   const router = useRouter()
 
+  if (!CURRENT_USER) {
+    router.push("/auth/login")
+    return null
+  }
+
   // Load meetup from store
   useEffect(() => {
-    const meetups = CURRENT_USER.getMeetups()
+    const meetups = CURRENT_USER!.getMeetups()
     const foundMeetup = meetups.find((m) => m.id === params.id)
     if (foundMeetup) {
       setMeetup(foundMeetup)
@@ -52,7 +57,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     )
   }
 
-  const isCreator = meetup.creator.getId() === CURRENT_USER.getId()
+  const isCreator = meetup.creator.getId() === CURRENT_USER!.getId()
   const canInvite = isCreator && meetup.getMemberCount() < 5
 
   const handleSettingsClick = () => {
