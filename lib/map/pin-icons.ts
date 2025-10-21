@@ -77,6 +77,8 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
     label.style.whiteSpace = "nowrap"
     label.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)"
     label.style.pointerEvents = "none"
+    label.style.border = isSelected ? "2px solid #F97316" : "2px solid transparent"
+    label.style.transition = "border-color 0.2s ease"
     container.appendChild(label)
   }
 
@@ -86,6 +88,92 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
 
   container.addEventListener("mouseleave", () => {
     circle.style.transform = "scale(1)"
+  })
+
+  return container
+}
+
+export function createParkingSpotPinElement(
+  title?: string,
+  isSelected: boolean = false,
+  availabilityPercentage?: number
+): HTMLElement {
+  const container = document.createElement("div")
+  container.style.cursor = "pointer"
+  container.style.zIndex = "50"
+  container.className = "parking-pin"
+
+  // Determine color based on availability percentage
+  let backgroundColor: string
+  if (availabilityPercentage === undefined || availabilityPercentage === null) {
+    backgroundColor = "#6B7280" // Gray for no data (darker for contrast with white P)
+  } else if (availabilityPercentage >= 50) {
+    backgroundColor = "#22C55E" // Green for high availability
+  } else if (availabilityPercentage >= 20) {
+    backgroundColor = "#F59E0B" // Amber for medium availability
+  } else {
+    backgroundColor = "#EF4444" // Red for low availability
+  }
+
+  // Create square with rounded corners
+  const square = document.createElement("div")
+  square.className = "parking-square"
+  square.style.width = "24px"
+  square.style.height = "24px"
+  square.style.borderRadius = "4px"
+  square.style.backgroundColor = backgroundColor
+  square.style.border = isSelected ? "3px solid #2563EB" : "2px solid white"
+  square.style.boxShadow = isSelected
+    ? "0 4px 8px rgba(0,0,0,0.3)"
+    : "0 2px 4px rgba(0,0,0,0.3)"
+  square.style.transition = "all 0.2s ease"
+  square.style.display = "flex"
+  square.style.alignItems = "center"
+  square.style.justifyContent = "center"
+
+  // Add "P" letter
+  const pLetter = document.createElement("span")
+  pLetter.className = "parking-p-letter"
+  pLetter.textContent = "P"
+  pLetter.style.color = "white"
+  pLetter.style.fontSize = isSelected ? "16px" : "14px"
+  pLetter.style.fontWeight = "bold"
+  pLetter.style.lineHeight = "1"
+  pLetter.style.userSelect = "none"
+  pLetter.style.transition = "font-size 0.2s ease"
+  square.appendChild(pLetter)
+
+  container.appendChild(square)
+
+  // Add label if title is provided
+  if (title) {
+    const label = document.createElement("div")
+    label.className = "pin-label"
+    label.textContent = title
+    label.style.position = "absolute"
+    label.style.left = "30px"
+    label.style.top = "50%"
+    label.style.transform = "translateY(-50%)"
+    label.style.backgroundColor = "white"
+    label.style.padding = "4px 8px"
+    label.style.borderRadius = "4px"
+    label.style.fontSize = "12px"
+    label.style.fontWeight = "500"
+    label.style.whiteSpace = "nowrap"
+    label.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)"
+    label.style.pointerEvents = "none"
+    label.style.border = isSelected ? "2px solid #2563EB" : "2px solid transparent"
+    label.style.transition = "border-color 0.2s ease"
+    container.appendChild(label)
+  }
+
+  // Hover effect
+  container.addEventListener("mouseenter", () => {
+    square.style.transform = "scale(1.2)"
+  })
+
+  container.addEventListener("mouseleave", () => {
+    square.style.transform = "scale(1)"
   })
 
   return container

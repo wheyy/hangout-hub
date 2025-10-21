@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl"
 import type { MapOptions, MarkerOptions, BoundaryOptions, RouteOptions } from "./types"
-import { createSearchPinElement, createHangoutSpotPinElement } from "./pin-icons"
+import { createSearchPinElement, createHangoutSpotPinElement, createParkingSpotPinElement } from "./pin-icons"
 
 export class MapLibreMap {
   private map: maplibregl.Map | null = null
@@ -90,9 +90,12 @@ export class MapLibreMap {
       this.removeMarker(options.id)
     }
 
-  const el = createHangoutSpotPinElement(options.title, options.isSelected || false, options.color)
+    // Create appropriate pin element based on marker type
+    const el = options.type === "parking"
+      ? createParkingSpotPinElement(options.title, options.isSelected || false, options.availabilityPercentage)
+      : createHangoutSpotPinElement(options.title, options.isSelected || false, options.color)
 
-    const marker = new maplibregl.Marker({ 
+    const marker = new maplibregl.Marker({
       element: el,
       anchor: "center"
     })
@@ -109,21 +112,58 @@ export class MapLibreMap {
   updateMarkerSelection(id: string, isSelected: boolean): void {
     const marker = this.markers.get(id)
     if (!marker) return
-    
+
     const el = marker.getElement()
     const circle = el.querySelector(".pin-circle") as HTMLElement
-    if (!circle) return
-    
-    if (isSelected) {
-      el.style.zIndex = "150"
-      circle.style.backgroundColor = "#F97316"
-      circle.style.border = "3px solid white"
-      circle.style.boxShadow = "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)"
-    } else {
-      el.style.zIndex = "50"
-      circle.style.backgroundColor = "#EF4444"
-      circle.style.border = "2px solid white"
-      circle.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)"
+    const square = el.querySelector(".parking-square") as HTMLElement
+    const label = el.querySelector(".pin-label") as HTMLElement
+
+    // Handle hangout spot markers (circles)
+    if (circle) {
+      if (isSelected) {
+        el.style.zIndex = "150"
+        circle.style.backgroundColor = "#F97316"
+        circle.style.border = "3px solid white"
+        circle.style.boxShadow = "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)"
+        if (label) {
+          label.style.border = "2px solid #F97316"
+        }
+      } else {
+        el.style.zIndex = "50"
+        circle.style.backgroundColor = "#EF4444"
+        circle.style.border = "2px solid white"
+        circle.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)"
+        if (label) {
+          label.style.border = "2px solid transparent"
+        }
+      }
+    }
+
+    // Handle parking spot markers (squares)
+    if (square) {
+      const pLetter = square.querySelector(".parking-p-letter") as HTMLElement
+
+      if (isSelected) {
+        el.style.zIndex = "150"
+        square.style.border = "3px solid #2563EB"
+        square.style.boxShadow = "0 4px 8px rgba(0,0,0,0.3)"
+        if (pLetter) {
+          pLetter.style.fontSize = "16px"
+        }
+        if (label) {
+          label.style.border = "2px solid #2563EB"
+        }
+      } else {
+        el.style.zIndex = "50"
+        square.style.border = "2px solid white"
+        square.style.boxShadow = "0 2px 4px rgba(0,0,0,0.3)"
+        if (pLetter) {
+          pLetter.style.fontSize = "14px"
+        }
+        if (label) {
+          label.style.border = "2px solid transparent"
+        }
+      }
     }
   }
 

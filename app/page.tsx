@@ -84,7 +84,7 @@ export function MapInterface() {
   const [searchBarValue, setSearchBarValue] = useState("")
   const [hasSearchPin, setHasSearchPin] = useState(false)
   const [carparks, setCarparks] = useState<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>>([])
-  const [selectedCarpark, setSelectedCarpark] = useState<string | null>(null)
+  const [selectedCarpark, setSelectedCarpark] = useState<{ info: CarparkInfo; availability?: CarparkAvailability } | null>(null)
   
   // Directions state
   const [directionsMode, setDirectionsMode] = useState(false)
@@ -132,6 +132,17 @@ export function MapInterface() {
     })
   }, [selectedSpot, spots, map])
 
+  useEffect(() => {
+    if (!map) return
+
+    carparks.forEach(({ info }) => {
+      map.updateMarkerSelection(
+        `carpark-${info.carpark_number}`,
+        selectedCarpark?.info.carpark_number === info.carpark_number
+      )
+    })
+  }, [selectedCarpark, carparks, map])
+
   const performAreaSearch = async (lng: number, lat: number) => {
     if (!map) return
 
@@ -163,11 +174,16 @@ export function MapInterface() {
         })
       })
       carparksWithAvail.forEach(({ info, availability }) => {
+        const availabilityPercentage = availability && availability.total_lots > 0
+          ? (availability.lots_available / availability.total_lots) * 100
+          : undefined
+
         map.addMarker({
           id: `carpark-${info.carpark_number}`,
           coordinates: info.coordinates,
-          title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
-          color: "#04c7f8", // blue for carparks
+          title: info.address,
+          type: "parking",
+          availabilityPercentage,
           onClick: () => handleCarparkSelect(info, availability),
         })
       })
@@ -271,13 +287,17 @@ export function MapInterface() {
 
   const handleCarparkSelect = (info: CarparkInfo, availability?: CarparkAvailability) => {
     if (!map) return
-    
+
     // Zoom to the selected carpark
     map.setCenter(info.coordinates[0], info.coordinates[1], 17)
-    
+
     // Set as selected carpark and open the drawer
-    setSelectedCarpark(info.carpark_number)
+    setSelectedCarpark({ info, availability })
     setParkingDrawerOpen(true)
+  }
+
+  const handleCarparkBack = () => {
+    setSelectedCarpark(null)
   }
 
   const handleCarparkGetDirections = async (info: CarparkInfo) => {
@@ -495,11 +515,16 @@ export function MapInterface() {
 
                 // Add carpark markers to the map
                 carparksWithAvail.forEach(({ info, availability }) => {
+                  const availabilityPercentage = availability && availability.total_lots > 0
+                    ? (availability.lots_available / availability.total_lots) * 100
+                    : undefined
+
                   map.addMarker({
                     id: `carpark-${info.carpark_number}`,
                     coordinates: info.coordinates,
-                    title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
-                    color: "#04c7f8", // blue for carparks
+                    title: info.address,
+                    type: "parking",
+                    availabilityPercentage,
                     onClick: () => handleCarparkSelect(info, availability),
                   })
                 })
@@ -630,11 +655,16 @@ export function MapInterface() {
           
           // Add carpark markers to the map
           carparksWithAvail.forEach(({ info, availability }) => {
+            const availabilityPercentage = availability && availability.total_lots > 0
+              ? (availability.lots_available / availability.total_lots) * 100
+              : undefined
+
             map.addMarker({
               id: `carpark-${info.carpark_number}`,
               coordinates: info.coordinates,
-              title: `${info.address} (${availability?.lots_available ?? "?"} lots)`,
-              color: "#04c7f8", // blue for carparks
+              title: info.address,
+              type: "parking",
+              availabilityPercentage,
               onClick: () => handleCarparkSelect(info, availability),
             })
           })
@@ -763,7 +793,8 @@ export function MapInterface() {
         carparks={carparks}
         onSelect={handleCarparkSelect}
         onGetDirections={handleCarparkGetDirections}
-        selectedCarparkId={selectedCarpark}
+        selectedCarpark={selectedCarpark}
+        onBack={handleCarparkBack}
       />
       {error && (
         <ErrorPopup
