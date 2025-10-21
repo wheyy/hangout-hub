@@ -158,7 +158,11 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
                   <div className="text-sm">
                     <span className="font-medium text-gray-700">Basement: </span>
                     <span className="text-gray-600">
-                      {info.car_park_basement === "Y" ? "Yes" : info.car_park_basement === "N" ? "No" : info.car_park_basement}
+                      {info.car_park_basement.toUpperCase() === "Y" || info.car_park_basement.toUpperCase() === "YES"
+                        ? "Yes"
+                        : info.car_park_basement.toUpperCase() === "N" || info.car_park_basement.toUpperCase() === "NO"
+                        ? "No"
+                        : info.car_park_basement}
                     </span>
                   </div>
                 )}

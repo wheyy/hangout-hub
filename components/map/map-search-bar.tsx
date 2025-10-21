@@ -214,10 +214,17 @@ export function MapSearchBar({
   }
 
   return (
-    <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none flex items-start justify-center gap-2">
+    <div className="fixed top-14 left-0 right-0 z-[1000] pointer-events-none hidden min-[850px]:block pt-4">
+      <div className="mx-auto px-4" style={{
+        marginLeft: '300px',
+        marginRight: '300px',
+        minWidth: '250px',
+        maxWidth: 'calc(100vw - 600px)'
+      }}>
+        <div className="flex flex-wrap items-start justify-center gap-2">
       {directionsMode ? (
         /* Directions Mode - FROM and TO fields */
-        <div ref={searchBarRef} className="relative pointer-events-auto" style={{ width: '500px' }}>
+        <div ref={searchBarRef} className="relative pointer-events-auto w-full" style={{ minWidth: '250px', maxWidth: '500px' }}>
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-3 space-y-2">
             {/* FROM field */}
             <div className="relative flex items-center bg-gray-50 rounded-lg border border-gray-200">
@@ -334,7 +341,7 @@ export function MapSearchBar({
       ) : (
         /* Normal Search Mode */
         <>
-          <div ref={searchBarRef} className="relative pointer-events-auto" style={{ width: '500px' }}>
+          <div ref={searchBarRef} className="relative pointer-events-auto flex-1" style={{ minWidth: '250px', maxWidth: '350px' }}>
             <div className="relative flex items-center bg-white rounded-full shadow-lg border border-gray-200">
               {/* Directions Toggle Button - Left side */}
               {onToggleDirectionsMode && (
@@ -413,6 +420,8 @@ export function MapSearchBar({
           )}
         </>
       )}
+        </div>
+      </div>
     </div>
   )
 }

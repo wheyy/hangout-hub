@@ -276,8 +276,9 @@ export function MapInterface() {
 
   const handleCardClick = (spot: HangoutSpot) => {
     if (!map) return
-    
+
     setSelectedSpot(spot)
+    setHangoutDrawerOpen(true)
     map.setCenter(spot.coordinates[0], spot.coordinates[1], 17)
   }
 

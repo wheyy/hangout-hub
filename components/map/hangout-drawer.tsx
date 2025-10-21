@@ -126,7 +126,7 @@ export function HangoutDrawer({
   return (
     <div
       data-drawer="hangout"
-      className={`fixed left-0 top-14 bottom-0 z-[1000] bg-white border-r border-gray-200 shadow-lg transition-transform duration-300 ease-in-out ${
+      className={`fixed left-0 top-14 bottom-0 z-[1000] bg-white border-r border-gray-200 shadow-lg transition-transform duration-300 ease-in-out hidden min-[850px]:block ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
       style={{ width: "300px" }}
