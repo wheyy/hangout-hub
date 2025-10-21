@@ -1,4 +1,9 @@
-// "use client"
+"use client"
+
+export default function SearchPage() {
+	// Placeholder to satisfy Next.js route; UI is currently disabled.
+	return null
+}
 
 // import { useState, useEffect } from "react"
 // import { Button } from "@/components/ui/button"

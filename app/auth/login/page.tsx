@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { authService } from "@/lib/auth"
 import { AuthGuard } from "@/components/auth-guard"
+import { useUserStore } from "@/hooks/user-store"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -20,7 +21,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [info, setInfo] = useState("")
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const router = useRouter()
+  const initializeUser = useUserStore((s) => s.initializeUser)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,6 +34,7 @@ export default function LoginPage() {
 
     try {
       await authService.signIn(email, password)
+      await initializeUser()
       router.push("/meetups")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid email or password. Please try again.")
@@ -36,6 +42,33 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+  const handleResend = async () => {
+    if (resendCooldown > 0) return
+    setResendLoading(true)
+    setInfo("")
+    try {
+      await authService.resendVerification(email, password)
+      setError("")
+      setInfo("Verification email sent. Please check your inbox.")
+      setResendCooldown(60)
+    } catch (e) {
+      setInfo("")
+      const msg = e instanceof Error ? e.message : "Failed to resend verification email."
+      setError(msg)
+      if (msg.toLowerCase().includes("too many attempts")) {
+        setResendCooldown(60)
+      }
+    } finally {
+      setResendLoading(false)
+    }
+  }
+
+  // Cooldown tick
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const t = setInterval(() => setResendCooldown((s) => (s > 0 ? s - 1 : 0)), 1000)
+    return () => clearInterval(t)
+  }, [resendCooldown])
 
   return (
     <AuthGuard requireAuth={false}>
@@ -62,8 +95,27 @@ export default function LoginPage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <Alert className="border-red-200 bg-red-50">
-                  <AlertDescription className="text-red-700">{error}</AlertDescription>
+                <div className="space-y-2">
+                  <Alert className="border-red-200 bg-red-50">
+                    <AlertDescription className="text-red-700">{error}</AlertDescription>
+                  </Alert>
+                  {error.toLowerCase().includes("verify your email") && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-600">Didn't get the email?</span>
+                      <Button type="button" variant="outline" size="sm" onClick={handleResend} disabled={resendLoading || !email || !password || resendCooldown > 0}>
+                        {resendLoading
+                          ? "Sending..."
+                          : resendCooldown > 0
+                          ? `Resend in ${resendCooldown}s`
+                          : "Resend verification"}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {info && (
+                <Alert className="border-green-200 bg-green-50">
+                  <AlertDescription className="text-green-700">{info}</AlertDescription>
                 </Alert>
               )}
 
@@ -102,6 +154,10 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              <div className="flex items-center justify-between text-sm mb-1">
+                <span />
+                <Link href="/auth/reset" className="text-blue-600 hover:text-blue-700">Forgot password?</Link>
+              </div>
               <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
