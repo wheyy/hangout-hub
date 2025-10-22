@@ -1,4 +1,5 @@
-import { Location } from './location';
+// lib/data/parkingspot.ts
+import { Location } from './location'; // Assuming you have a Location interface
 
 export enum ParkingType {
     MSCP = "MSCP",
@@ -88,7 +89,6 @@ export class ParkingSpot implements Location {
   updateTotalCapacity(newTotal: number): boolean {
     if (newTotal < 0) return false;
     this.totalCapacity = newTotal;
-    // Clamp availability if it went out of bounds
     if (this.currentAvailability > newTotal) {
       this.currentAvailability = newTotal;
     }

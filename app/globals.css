@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -125,8 +126,13 @@
   .map-container {
     position: relative;
     width: 100%;
-    height: 100vh;
+    height: 100%;
     overflow: hidden;
+  }
+
+  .map-container > div {
+    width: 100%;
+    height: 100%;
   }
 
   .floating-panel {
@@ -135,5 +141,42 @@
 
   .glass-panel {
     @apply bg-background/80 backdrop-blur-md border border-border/50;
+  }
+
+  /* MapLibre controls positioning - center at bottom */
+  .maplibregl-ctrl-bottom-left {
+    left: 50% !important;
+    transform: translateX(-50%);
+    bottom: 20px !important;
+  }
+
+  .maplibregl-ctrl-bottom-left .maplibregl-ctrl {
+    margin: 0 !important;
+  }
+
+  /* Style the navigation controls to be horizontal */
+  .maplibregl-ctrl-group {
+    display: flex !important;
+    flex-direction: row !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+  }
+
+  .maplibregl-ctrl-group button {
+    width: 40px !important;
+    height: 40px !important;
+    border-right: 1px solid rgba(0, 0, 0, 0.1) !important;
+  }
+
+  .maplibregl-ctrl-group button:last-child {
+    border-right: none !important;
+  }
+
+  .cursor-grab {
+    cursor: grab;
+  }
+
+  .cursor-grabbing {
+    cursor: grabbing;
   }
 }
