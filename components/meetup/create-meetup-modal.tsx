@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MapPin, Calendar, Clock, Loader2, X } from "lucide-react"
+import { MapPin, Calendar, Clock, Loader2, X, AlertTriangle } from "lucide-react"
 import { Meetup } from "@/lib/data/meetup"
 import { useRouter } from "next/navigation"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
@@ -20,6 +20,8 @@ interface CreateMeetupModalProps {
 }
 
 export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
+  console.log('CreateMeetupModal render - isOpen:', isOpen)
+  
   const [formData, setFormData] = useState({
     title: "",
     date: "",
@@ -31,6 +33,7 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
   const [suggestions, setSuggestions] = useState<Array<{placeId: string, description: string}>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const [hasError, setHasError] = useState(false)
   const debounceTimerRef = useRef<NodeJS.Timeout>()
   const suggestionsRef = useRef<HTMLDivElement>(null)
 
@@ -53,17 +56,21 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
 
     debounceTimerRef.current = setTimeout(async () => {
       setIsLoadingSuggestions(true)
+      setHasError(false)
       try {
         const results = await GooglePlacesService.autocomplete(destinationQuery)
         setSuggestions(results)
-        setShowSuggestions(results.length > 0)
+        setShowSuggestions(true)
+        setHasError(false)
       } catch (error) {
         console.error("Autocomplete error:", error)
         setSuggestions([])
+        setHasError(true)
+        setShowSuggestions(true)
       } finally {
         setIsLoadingSuggestions(false)
       }
-    }, 300)
+    }, 500)
 
     return () => {
       if (debounceTimerRef.current) {
@@ -223,19 +230,31 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
               )}
             </div>
 
-            {showSuggestions && suggestions.length > 0 && (
+            {showSuggestions && (
               <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.placeId}
-                    type="button"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
-                  >
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    {suggestion.description}
-                  </button>
-                ))}
+                {hasError ? (
+                  <div className="px-4 py-3 text-sm flex items-center gap-3 text-red-600">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>Unable to load suggestions. Please try again.</span>
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <div className="px-4 py-3 text-sm flex items-center gap-3 text-gray-500">
+                    <MapPin className="w-4 h-4 flex-shrink-0" />
+                    <span>No results found. Try a different search.</span>
+                  </div>
+                ) : (
+                  suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.placeId}
+                      type="button"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
+                    >
+                      <MapPin className="w-4 h-4 text-gray-400" />
+                      {suggestion.description}
+                    </button>
+                  ))
+                )}
               </div>
             )}
 

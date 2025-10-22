@@ -163,13 +163,18 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-3">
               <p className="text-sm text-gray-600">
                 Don't have an account?{" "}
                 <Link href="/auth/register" className="text-blue-600 hover:text-blue-700 font-medium">
                   Sign up
                 </Link>
               </p>
+              <Link href="/" className="block">
+                <Button variant="outline" className="w-full border-gray-300 text-gray-700 hover:bg-gray-50">
+                  Explore without logging in
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

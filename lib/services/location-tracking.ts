@@ -2,7 +2,7 @@ import { doc, onSnapshot, Unsubscribe } from "firebase/firestore"
 import { db } from "@/lib/firebase/config"
 import { User } from "@/lib/data/user"
 
-const LOCATION_UPDATE_INTERVAL = 5 * 60 * 1000 // 5 minutes
+const LOCATION_UPDATE_INTERVAL = 1 * 60 * 1000 // 1 minute
 
 export interface MemberLocation {
   userId: string

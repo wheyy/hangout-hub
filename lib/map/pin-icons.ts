@@ -48,16 +48,31 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
   circle.style.width = "24px"
   circle.style.height = "24px"
   circle.style.borderRadius = "50%"
-  const unselectedColor = baseColor || "#EF4444"
-  // Ensure the color is applied with !important to prevent overrides
-  const finalColor = isSelected ? "#F97316" : unselectedColor
+  const finalColor = baseColor || "#EF4444"
   circle.style.backgroundColor = finalColor
   circle.style.setProperty("background-color", finalColor, "important")
   circle.style.border = isSelected ? "3px solid white" : "2px solid white"
   circle.style.boxShadow = isSelected 
-    ? "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)" 
+    ? `0 0 0 2px ${finalColor}, 0 4px 8px rgba(0,0,0,0.3)` 
     : "0 2px 4px rgba(0,0,0,0.3)"
   circle.style.transition = "all 0.2s ease"
+  
+  // Add pulsating animation for selected markers
+  if (isSelected) {
+    circle.style.animation = "pulse 2s ease-in-out infinite"
+    // Add keyframes to document if not already added
+    if (!document.querySelector('#pulse-keyframes')) {
+      const style = document.createElement('style')
+      style.id = 'pulse-keyframes'
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.15); opacity: 0.8; }
+        }
+      `
+      document.head.appendChild(style)
+    }
+  }
   
   container.appendChild(circle)
   
@@ -77,7 +92,7 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
     label.style.whiteSpace = "nowrap"
     label.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)"
     label.style.pointerEvents = "none"
-    label.style.border = isSelected ? "2px solid #F97316" : "2px solid transparent"
+    label.style.border = isSelected ? `2px solid ${finalColor}` : "2px solid transparent"
     label.style.transition = "border-color 0.2s ease"
     container.appendChild(label)
   }

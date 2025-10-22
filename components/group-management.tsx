@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX } from "lucide-react"
+import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX, Edit, Save, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Input } from "./ui/input"
 
@@ -32,17 +32,34 @@ interface GroupManagementProps {
   canInvite: boolean
   onInvite: () => void
   onDelete: () => void
+  isEditing?: boolean
+  editData?: {
+    title: string
+    destination: string
+    date: string
+    time: string
+  }
+  onEdit?: () => void
+  onSaveEdit?: () => void
+  onCancelEdit?: () => void
+  onEditDataChange?: (data: any) => void
 }
 
-export function GroupManagement({ 
-  meetupId, 
+export function GroupManagement({
+  meetupId,
   meetup,
-  isActive, 
+  isActive,
   onLocationShare,
   isCreator,
   canInvite,
   onInvite,
-  onDelete
+  onDelete,
+  isEditing = false,
+  editData,
+  onEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onEditDataChange
 }: GroupManagementProps) {
   const [isSharing, setIsSharing] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
@@ -162,30 +179,110 @@ export function GroupManagement({
       {/* Meetup Details */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5" />
-            Meetup Details
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Meetup Details
+            </div>
+            {isCreator && !isEditing && onEdit && (
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+            )}
+            {isCreator && isEditing && (
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={onCancelEdit}>
+                  <X className="w-4 h-4" />
+                </Button>
+                <Button size="sm" onClick={onSaveEdit} className="bg-blue-600 text-white hover:bg-blue-700">
+                  <Save className="w-4 h-4 mr-1" />
+                  Save
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-gray-700">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">{meetup.getDateString()} at {meetup.getTimeString()}</span>
+          {isEditing && editData && onEditDataChange ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Meetup Name</label>
+                <Input
+                  value={editData.title}
+                  onChange={(e) => onEditDataChange({ ...editData, title: e.target.value })}
+                  placeholder="Enter meetup name"
+                  className="text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Destination</label>
+                <Input
+                  value={editData.destination}
+                  onChange={(e) => onEditDataChange({ ...editData, destination: e.target.value })}
+                  placeholder="Enter destination"
+                  className="text-sm"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">Destination editing is currently disabled</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
+                  <Input
+                    type="date"
+                    value={editData.date}
+                    onChange={(e) => onEditDataChange({ ...editData, date: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Time</label>
+                  <Input
+                    type="time"
+                    value={editData.time}
+                    onChange={(e) => onEditDataChange({ ...editData, time: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-gray-700">
-              <MapPin className="w-4 h-4" />
-              <span className="text-sm">{meetup.destination.name}</span>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+                <p className="text-sm text-gray-900 font-medium">{meetup.title}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Destination</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <MapPin className="w-4 h-4" />
+                  <span className="text-sm">{meetup.destination.name}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Date & Time</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm">{meetup.getDateString()} at {meetup.getTimeString()}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Members</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm">{meetup.getMemberCount()} / 10 members</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Arrived</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm">{meetup.getArrivedMemberCount()} members arrived</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 text-gray-700">
-              <Users className="w-4 h-4" />
-              <span className="text-sm">{meetup.getMemberCount()} / 10 members</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-700">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-sm">{meetup.getArrivedMemberCount()} members arrived</span>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

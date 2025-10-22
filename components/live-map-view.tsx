@@ -8,7 +8,7 @@ import { MapProviderComponent, useMap } from "@/lib/map/map-provider"
 import { Meetup } from "@/lib/data/meetup"
 import { LocationTrackingService } from "@/lib/services/location-tracking"
 import { useUserStore } from "@/hooks/user-store"
-import { getMemberColor } from "@/lib/constants/meetup-colors"
+import { getMemberColor, DESTINATION_COLOR, CURRENT_USER_COLOR } from "@/lib/constants/meetup-colors"
 import { getDirections } from "@/lib/services/osrm-directions"
 import { ArriveConfirmationModal } from "@/components/meetup/arrive-confirmation-modal"
 import { AllArrivedModal } from "@/components/meetup/all-arrived-modal"
@@ -207,21 +207,27 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
     // Clear existing markers and routes
     map.clearAll()
 
-    // Add destination marker (blue pin)
+    // Add destination marker (red)
     map.addMarker({
       id: "destination",
       coordinates: destination.coordinates,
       title: destination.name,
-      color: "#3B82F6",
+      color: DESTINATION_COLOR,
     })
 
     // Add member markers
-    members.forEach((member, index) => {
+    let colorIndex = 0
+    members.forEach((member) => {
       const location = memberLocations.get(member.id)
       if (!location) return
 
-      const color = getMemberColor(index)
       const isCurrentUser = member.id === currentUser?.id
+      const color = isCurrentUser ? CURRENT_USER_COLOR : getMemberColor(colorIndex)
+      
+      // Only increment color index for non-current users
+      if (!isCurrentUser) {
+        colorIndex++
+      }
 
       map.addMarker({
         id: `member-${member.id}`,
@@ -257,9 +263,9 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
 
     const fetchRoutes = async () => {
       const newRoutes = new Map()
+      let colorIndex = 0
 
-      for (let i = 0; i < members.length; i++) {
-        const member = members[i]
+      for (const member of members) {
         const location = memberLocations.get(member.id)
         if (!location) continue
 
@@ -272,7 +278,13 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
 
           if (response.routes && response.routes.length > 0) {
             const route = response.routes[0]
-            const color = getMemberColor(i)
+            const isCurrentUser = member.id === currentUser?.id
+            const color = isCurrentUser ? CURRENT_USER_COLOR : getMemberColor(colorIndex)
+            
+            // Only increment color index for non-current users
+            if (!isCurrentUser) {
+              colorIndex++
+            }
 
             // Draw route on map
             map.addRoute({
@@ -293,7 +305,7 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
     }
 
     fetchRoutes()
-  }, [map, isLoaded, members, memberLocations, destination])
+  }, [map, isLoaded, members, memberLocations, destination, currentUser])
 
   return null
 }

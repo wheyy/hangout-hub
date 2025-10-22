@@ -5,6 +5,7 @@ import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from "@/lib/auth"
+import { MapPin } from "lucide-react"
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -48,10 +49,13 @@ export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <div className="w-5 h-5 bg-white rounded"></div>
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">Hangout Hub</h1>
           </div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     )

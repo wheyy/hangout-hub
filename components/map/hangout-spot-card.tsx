@@ -1,10 +1,12 @@
 "use client"
 
 import { HangoutSpot } from "@/lib/data/hangoutspot"
-import { Star, MapPin, ArrowLeft } from "lucide-react"
+import { Star, MapPin, ArrowLeft, Users, Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { useUserStore } from "@/hooks/user-store"
 
 interface HangoutSpotCardProps {
   spot: HangoutSpot
@@ -39,7 +41,21 @@ function getOpenStatus(openingHours: string) {
 
 export function HangoutSpotCard({ spot, variant, onClick, onBack, onGetDirections }: HangoutSpotCardProps) {
   const [imageError, setImageError] = useState(false)
-  
+  const router = useRouter()
+  const currentUser = useUserStore((s) => s.user)
+
+  const handleCreateMeetup = () => {
+    // Check if user is logged in
+    if (!currentUser) {
+      // Redirect to sign up page
+      router.push('/auth/register')
+      return
+    }
+
+    // Navigate to meetups page
+    router.push('/meetups')
+  }
+
   if (variant === "compact") {
     const openStatus = getOpenStatus(spot.openingHours)
     
@@ -73,10 +89,6 @@ export function HangoutSpotCard({ spot, variant, onClick, onBack, onGetDirection
           <div className="flex items-start gap-1 text-xs text-gray-600">
             <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
             <span className="line-clamp-2">{spot.address}</span>
-          </div>
-
-          <div className="text-xs text-gray-500">
-            Distance: N/A
           </div>
         </div>
       </button>
@@ -143,16 +155,18 @@ export function HangoutSpotCard({ spot, variant, onClick, onBack, onGetDirection
               <p>{spot.address}</p>
             </div>
           </div>
-
-          <div>
-            <h4 className="font-semibold text-sm mb-2">Distance</h4>
-            <p className="text-sm text-gray-600">N/A</p>
-          </div>
         </div>
 
-        <Button className="w-full" onClick={() => onGetDirections?.(spot)}>
-          Get Directions
-        </Button>
+        <div className="space-y-2">
+          <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={handleCreateMeetup}>
+            <Users className="w-4 h-4 mr-2" />
+            Create Meetup
+          </Button>
+          <Button className="w-full" onClick={() => onGetDirections?.(spot)}>
+            <Navigation className="w-4 h-4 mr-2" />
+            Get Directions
+          </Button>
+        </div>
       </div>
     </div>
   )
