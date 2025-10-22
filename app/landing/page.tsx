@@ -16,18 +16,15 @@ export default function HomePage() {
               </div>
               <span className="text-xl font-bold text-gray-900">Hangout Hub</span>
             </div>
-            <div className="flex items-center gap-4">
-              {/* <Link href="/auth/login">
-                <Button variant="ghost" className="text-gray-700 hover:text-blue-600">
+            <div className="flex items-center gap-3">
+              <Link href="/auth/login">
+                <Button variant="ghost" className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white/90">
                   Sign In
                 </Button>
               </Link>
               <Link href="/auth/register">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Get Started</Button>
-              </Link> */}
-              <Link href="/auth/login">
-                <Button variant="ghost" className="bg-blue-600 hover:bg-blue-700 text-white hover:text-white90">
-                  Sign In
+                <Button variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                  Sign Up
                 </Button>
               </Link>
             </div>
@@ -50,15 +47,6 @@ export default function HomePage() {
             <Link href="/">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
                 Start Exploring
-              </Button>
-            </Link>
-            <Link href="/search">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-blue-300 text-blue-700 hover:bg-blue-50 px-8 py-3 bg-transparent"
-              >
-                Browse Spots
               </Button>
             </Link>
           </div>
@@ -123,18 +111,7 @@ export default function HomePage() {
           </Card>
         </div>
 
-        {/* CTA Section */}
-        <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-blue-200 p-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Ready to Start Hanging Out?</h2>
-          <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-            Join thousands of users who are already discovering amazing places and creating memorable experiences.
-          </p>
-          <Link href="/auth/register">
-            <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
-              Create Your Account
-            </Button>
-          </Link>
-        </div>
+        {/** CTA removed per request: no "Create Your Account" section **/}
       </main>
 
       {/* Footer */}
