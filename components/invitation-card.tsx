@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, Calendar, Clock, Check, X, User } from "lucide-react"
-import { Invitation } from "@/types/invitation"
+import { Invitation } from "@/lib/data/invitation"
 import { isInvitationExpired } from "@/lib/invitation-utils"
 
 interface InvitationCardProps {
@@ -56,11 +56,11 @@ export function InvitationCard({ invitation, type, onAccept, onReject }: Invitat
           <div className="flex items-center gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
-              <span>{invitation.date}</span>
+              <span>{new Date(invitation.dateTime).toLocaleDateString()}</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              <span>{invitation.time}</span>
+              <span>{new Date(invitation.dateTime).toLocaleTimeString()}</span>
             </div>
           </div>
         </div>

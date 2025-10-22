@@ -89,7 +89,7 @@ export function MobileBottomDrawer({
   // Filter hangout spots based on selected criteria
   const filteredSpots = spots.filter((spot) => {
     // Filter by price range
-    if (priceRange.length > 0 && !priceRange.includes(spot.priceLevel)) {
+    if (priceRange.length > 0 && !priceRange.includes(spot.priceRange)) {
       return false
     }
 
@@ -99,10 +99,11 @@ export function MobileBottomDrawer({
     }
 
     // Filter by operating hours
-    if (operatingHours === "open" && !spot.isOpen) {
+    const isOpen = spot.openingHours && spot.openingHours.toLowerCase() !== 'closed'
+    if (operatingHours === "open" && !isOpen) {
       return false
     }
-    if (operatingHours === "closed" && spot.isOpen) {
+    if (operatingHours === "closed" && isOpen) {
       return false
     }
 

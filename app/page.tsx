@@ -73,7 +73,7 @@ function isPointInSingapore(lat: number, lng: number, boundaryData: any): boolea
   return false
 }
 
-export function MapInterface() {
+function MapInterface() {
   const { map, isLoaded } = useMap()
   const [spots, setSpots] = useState<HangoutSpot[]>([])
   const [loading, setLoading] = useState(false)

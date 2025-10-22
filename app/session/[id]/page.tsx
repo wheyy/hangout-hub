@@ -85,7 +85,7 @@ export default function SessionPage() {
 
   return (
     <div className="h-screen w-full overflow-hidden">
-      <MapProviderComponent provider="google" options={mapOptions} className="relative">
+      <MapProviderComponent options={mapOptions} className="relative">
         <SessionMapMarkers session={session} />
 
         {/* Map Controls */}

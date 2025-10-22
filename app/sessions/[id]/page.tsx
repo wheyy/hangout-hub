@@ -40,7 +40,7 @@ const mockSession = {
     avatar_url: "/placeholder.svg?height=40&width=40",
   },
   scheduled_time: "2024-12-15T11:00:00Z",
-  status: "planned" as const,
+  status: "active" as const,
   max_participants: 6,
   is_location_sharing_enabled: true,
   participants: [
