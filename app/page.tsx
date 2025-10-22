@@ -6,6 +6,7 @@ import { Navbar } from "@/components/navbar"
 import { MapSearchBar } from "@/components/map/map-search-bar"
 import { HangoutDrawer } from "@/components/map/hangout-drawer"
 import { ParkingDrawer } from "@/components/map/parking-drawer"
+import { MobileBottomDrawer } from "@/components/map/mobile-bottom-drawer"
 import { fetchCarparkAvailability, getCarparksWithinRadiusAsync, CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
 import { ErrorPopup } from "@/components/map/error-popup"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
@@ -85,7 +86,7 @@ export function MapInterface() {
   const [hasSearchPin, setHasSearchPin] = useState(false)
   const [carparks, setCarparks] = useState<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>>([])
   const [selectedCarpark, setSelectedCarpark] = useState<{ info: CarparkInfo; availability?: CarparkAvailability } | null>(null)
-  
+
   // Directions state
   const [directionsMode, setDirectionsMode] = useState(false)
   const [fromLocation, setFromLocation] = useState("")
@@ -796,6 +797,19 @@ export function MapInterface() {
         onGetDirections={handleCarparkGetDirections}
         selectedCarpark={selectedCarpark}
         onBack={handleCarparkBack}
+      />
+      <MobileBottomDrawer
+        spots={spots}
+        loadingSpots={loading}
+        selectedSpot={selectedSpot}
+        onSpotClick={handleCardClick}
+        onSpotBack={handleBack}
+        onSpotGetDirections={handleGetDirections}
+        carparks={carparks}
+        selectedCarpark={selectedCarpark}
+        onCarparkSelect={handleCarparkSelect}
+        onCarparkBack={handleCarparkBack}
+        onCarparkGetDirections={handleCarparkGetDirections}
       />
       {error && (
         <ErrorPopup

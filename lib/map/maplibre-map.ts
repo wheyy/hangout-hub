@@ -38,12 +38,14 @@ export class MapLibreMap {
       maxZoom: 18,
     })
 
-    // Add navigation controls at bottom center
-    this.map.addControl(new maplibregl.NavigationControl({
-      showCompass: true,
-      showZoom: true,
-      visualizePitch: false
-    }), "bottom-left")
+    // Add navigation controls only on desktop (>= 1000px)
+    if (window.innerWidth >= 1000) {
+      this.map.addControl(new maplibregl.NavigationControl({
+        showCompass: true,
+        showZoom: true,
+        visualizePitch: false
+      }), "bottom-left")
+    }
 
     return new Promise((resolve) => {
       this.map!.on("load", () => {
@@ -65,6 +67,25 @@ export class MapLibreMap {
     if (!this.map) return
     this.map.flyTo({
       center: [lng, lat],
+      zoom: zoom || this.map.getZoom(),
+      duration: 1000,
+    })
+  }
+
+  setCenterWithOffset(lng: number, lat: number, offsetY: number, zoom?: number): void {
+    if (!this.map) return
+
+    // Convert the target coordinates to pixel space
+    const targetPoint = this.map.project([lng, lat])
+
+    // Apply the offset (negative Y moves up)
+    targetPoint.y += offsetY
+
+    // Convert back to geographic coordinates
+    const offsetCenter = this.map.unproject(targetPoint)
+
+    this.map.flyTo({
+      center: [offsetCenter.lng, offsetCenter.lat],
       zoom: zoom || this.map.getZoom(),
       duration: 1000,
     })
@@ -502,5 +523,21 @@ export class MapLibreMap {
   getZoom(): number {
     if (!this.map) return 0
     return this.map.getZoom()
+  }
+
+  zoomIn(): void {
+    if (!this.map) return
+    this.map.zoomIn()
+  }
+
+  zoomOut(): void {
+    if (!this.map) return
+    this.map.zoomOut()
+  }
+
+  resetBearing(): void {
+    if (!this.map) return
+    this.map.setBearing(0)
+    this.map.setPitch(0)
   }
 }

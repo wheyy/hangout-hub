@@ -74,7 +74,7 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
   return (
     <div
       data-drawer="parking"
-      className={`fixed right-0 top-14 bottom-0 z-[1000] bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out hidden min-[850px]:block ${
+      className={`fixed right-0 top-14 bottom-0 z-[1000] bg-white border-l border-gray-200 shadow-lg transition-transform duration-300 ease-in-out hidden min-[1000px]:block ${
         isOpen ? "translate-x-0" : "translate-x-[300px]"
       }`}
       style={{ width: "300px" }}
