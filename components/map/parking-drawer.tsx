@@ -1,20 +1,18 @@
 ﻿"use client"
 
-import { ChevronLeft, ChevronRight, ParkingSquare, Filter } from "lucide-react"
-import { useState, useRef, useEffect } from "react"
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { ChevronLeft, ChevronRight, MapPin, Clock, DollarSign } from "lucide-react"
+import { singaporeSpots } from "@/lib/data/hangoutspot"
+import { mockParkingSpots } from "@/lib/data/parkingspot"
 
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
 import { ParkingSpotCard } from "./parking-spot-card";
 
-interface ParkingDrawerProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>;
-  onSelect?: (info: CarparkInfo, availability?: CarparkAvailability) => void;
-  onGetDirections?: (info: CarparkInfo) => void;
-  selectedCarpark?: { info: CarparkInfo; availability?: CarparkAvailability } | null;
-  onBack?: () => void;
-}
+  const parkingSpots = mockParkingSpots.filter((spot) => spot.isAvailable() == true)
 
 
 export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirections, selectedCarpark, onBack }: ParkingDrawerProps) {
@@ -150,22 +148,41 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
               )}
             </div>
 
-            <div className="flex-1 overflow-y-auto pt-3 pb-20">
-              <div className="space-y-2 px-3">
-                {filteredCarparks && filteredCarparks.length > 0 ? (
-                  filteredCarparks.map(({ info, availability }) => (
-                    <ParkingSpotCard
-                      key={info.carpark_number}
-                      info={info}
-                      availability={availability}
-                      variant="compact"
-                      onClick={() => onSelect?.(info, availability)}
-                    />
-                  ))
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <ParkingSquare className="w-8 h-8 text-gray-400" />
+          {/* Parking List */}
+          <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            {parkingSpots.map((spot) => {
+              const parking = spot!
+              return (
+                <Card key={spot.getCarparkCode()} className="cursor-pointer transition-all hover:shadow-md">
+                  <CardHeader className="p-3 pb-2">
+                    <CardTitle className="text-sm font-medium">{spot.name}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs capitalize">
+                        {parking.getParkingType()}
+                      </Badge>
+                      {parking.getTotalCapacity() && parking.getOccupied() && (
+                        <Badge className={`text-xs ${getAvailabilityColor(parking.getOccupied(), parking.getTotalCapacity())}`}>
+                          {getAvailabilityText(parking.getOccupied(), parking.getTotalCapacity())}
+                        </Badge>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-0">
+                    <div className="space-y-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />
+                        <span className="truncate">{spot.address}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>{spot.getOperatingHours()}</span>
+                      </div>
+                      {parking.getRate() && (
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="w-3 h-3" />
+                          <span>${parking.getRate()}/hour</span>
+                        </div>
+                      )}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       {filteredCarparks && filteredCarparks.length > 0 ? "No matching carparks" : "No carparks found in area"}

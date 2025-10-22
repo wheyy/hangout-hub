@@ -98,9 +98,9 @@ export class SearchService {
         filteredSpots = filteredSpots.filter((spot) => spot.rating >= filters.minRating!)
       }
 
-      if (filters.hasParking) {
-        filteredSpots = filteredSpots.filter((spot) => spot.parkingInfo?.available)
-      }
+      // if (filters.hasParking) {
+      //   filteredSpots = filteredSpots.filter((spot) => spot.parkingInfo?.available)
+      // }
 
       if (filters.categories && filters.categories.length > 0) {
         filteredSpots = filteredSpots.filter((spot) => filters.categories!.includes(spot.category))

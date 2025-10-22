@@ -12,10 +12,10 @@ export function CreateMeetupFAB() {
   const router = useRouter()
   const [showModal, setShowModal] = useState(false)
 
-  const handleSessionCreated = (sessionId: string) => {
-    setShowModal(false)
-    router.push(`/session/${sessionId}`)
-  }
+  // const handleSessionCreated = (sessionId: string) => {
+  //   setShowModal(false)
+  //   router.push(`/session/${sessionId}`)
+  // }
 
   return (
     <>
@@ -28,7 +28,7 @@ export function CreateMeetupFAB() {
         <Plus className="w-6 h-6" />
       </Button>
 
-      {showModal && <CreateMeetupModal onClose={() => setShowModal(false)} onSessionCreated={handleSessionCreated} />}
+      {showModal && <CreateMeetupModal isOpen={showModal} onClose={() => setShowModal(false)} onCreated={()=> setShowModal(false)} />}
     </>
   )
 }

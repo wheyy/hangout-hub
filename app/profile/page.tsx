@@ -279,64 +279,96 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Users, User, Eye, EyeOff, Check, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
+import { authService } from "@/lib/auth"
+import { AuthGuard } from "@/components/auth-guard"
+import { useRouter } from "next/navigation"
 
 export default function ProfilePage() {
+  const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error" | "">("")
+  const [deleting, setDeleting] = useState(false)
 
   // Current user data
   const [userData, setUserData] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
+    name: "",
+    email: "",
     password: "********",
   })
 
   // Form data for editing
   const [formData, setFormData] = useState({
-    name: userData.name,
-    email: userData.email,
+    newName: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
 
   const [errors, setErrors] = useState({
-    name: "",
-    email: "",
+    newName: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
 
+  // Live password requirement checks (same rules as Sign Up)
+  const passwordRequirements = [
+    { text: "At least 8 characters", met: formData.newPassword.length >= 8 },
+    { text: "Contains uppercase letter", met: /[A-Z]/.test(formData.newPassword) },
+    { text: "Contains lowercase letter", met: /[a-z]/.test(formData.newPassword) },
+    { text: "Contains number", met: /\d/.test(formData.newPassword) },
+  ]
+  const newPwEntered = formData.newPassword !== ""
+  const isNewPasswordValid = !newPwEntered || passwordRequirements.every((req) => req.met)
+  const passwordsMatch =
+    newPwEntered && formData.confirmPassword !== "" && formData.newPassword === formData.confirmPassword
+
+  useEffect(() => {
+    let mounted = true
+    authService.getCurrentUser().then((u) => {
+      if (!mounted) return
+      if (u) {
+        setUserData({ name: u.name, email: u.email, password: "********" })
+        setFormData((prev) => ({ ...prev, newName: u.name }))
+      }
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
   const validateForm = () => {
     const newErrors = {
-      name: "",
-      email: "",
+      newName: "",
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     }
 
-    // Name validation
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required"
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required"
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address"
+    // Name validation (only if changed)
+    if (formData.newName !== undefined && formData.newName.trim() === "") {
+      newErrors.newName = "Name cannot be empty"
     }
 
     // Password validation (only if changing password)
@@ -344,10 +376,13 @@ export default function ProfilePage() {
       if (!formData.currentPassword) {
         newErrors.currentPassword = "Current password is required to change password"
       }
-      if (formData.newPassword.length < 6) {
-        newErrors.newPassword = "New password must be at least 6 characters"
+      // Enforce same rules as Sign Up
+      if (!passwordRequirements.every((r) => r.met)) {
+        newErrors.newPassword = "Please ensure your password meets all requirements."
       }
-      if (formData.newPassword !== formData.confirmPassword) {
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = "Please confirm your new password"
+      } else if (formData.newPassword !== formData.confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match"
       }
     }
@@ -360,60 +395,81 @@ export default function ProfilePage() {
     setIsEditing(true)
     setMessage("")
     setMessageType("")
+    // Ensure the edit input reflects the latest displayed name
+    setFormData((prev) => ({ ...prev, newName: userData.name }))
   }
 
   const handleCancel = () => {
     setIsEditing(false)
-    setFormData({
-      name: userData.name,
-      email: userData.email,
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    })
-    setErrors({
-      name: "",
-      email: "",
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    })
+    setFormData({ newName: userData.name, currentPassword: "", newPassword: "", confirmPassword: "" })
+    setErrors({ newName: "", currentPassword: "", newPassword: "", confirmPassword: "" })
     setMessage("")
     setMessageType("")
   }
 
-  const handleConfirm = () => {
-    if (validateForm()) {
-      // Simulate API call
-      setTimeout(() => {
-        setUserData({
-          name: formData.name,
-          email: formData.email,
-          password: formData.newPassword ? "********" : userData.password,
-        })
-        setIsEditing(false)
-        setMessage("Profile updated successfully")
-        setMessageType("success")
-        setFormData({
-          name: formData.name,
-          email: formData.email,
-          currentPassword: "",
-          newPassword: "",
-          confirmPassword: "",
-        })
-      }, 500)
+  const handleConfirm = async () => {
+    setMessage("")
+    setMessageType("")
+    if (!validateForm()) return
+    try {
+      let updatedName = userData.name
+      // Update name if changed
+      if (formData.newName && formData.newName.trim() && formData.newName.trim() !== userData.name) {
+        updatedName = formData.newName.trim()
+        await authService.updateName(updatedName)
+        setUserData((prev) => ({ ...prev, name: updatedName }))
+      }
+      if (formData.newPassword) {
+        await authService.updatePassword(formData.currentPassword, formData.newPassword)
+        setUserData((prev) => ({ ...prev, password: "********" }))
+      }
+      setMessage("Profile updated successfully")
+      setMessageType("success")
+      setIsEditing(false)
+      // Reset form using the latest applied value to avoid flashing the old name on next edit
+      setFormData({ newName: updatedName, currentPassword: "", newPassword: "", confirmPassword: "" })
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to update profile")
+      setMessageType("error")
     }
   }
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleSignOut = async () => {
+    try {
+      await authService.signOut()
+      router.push("/auth/login")
+    } catch (e) {
+      setMessage("Failed to sign out. Please try again.")
+      setMessageType("error")
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    setMessage("")
+    setMessageType("")
+    try {
+      await authService.deleteAccount()
+      // Redirect after deletion
+      router.push("/auth/login")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete account"
+      setMessage(msg)
+      setMessageType("error")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    // Clear error when user starts typing
-    if (errors[field as keyof typeof errors]) {
+    if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }))
     }
   }
 
   return (
+    <AuthGuard>
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
@@ -440,6 +496,28 @@ export default function ProfilePage() {
             <User className="w-4 h-4 mr-1" />
             Profile
           </Button>
+          <Button variant="outline" size="sm" onClick={handleSignOut}>
+            Sign out
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">Delete account</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete your account and associated data. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
+                  {deleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </header>
 
@@ -475,34 +553,22 @@ export default function ProfilePage() {
                 <div>
                   <Input
                     id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange("name", e.target.value)}
-                    className={errors.name ? "border-red-500" : ""}
+                    value={formData.newName}
+                    onChange={(e) => handleInputChange("newName", e.target.value)}
+                    className={errors.newName ? "border-red-500" : ""}
+                    placeholder="Enter full name"
                   />
-                  {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name}</p>}
+                  {errors.newName && <p className="text-sm text-red-600 mt-1">{errors.newName}</p>}
                 </div>
               ) : (
                 <div className="p-3 bg-gray-50 rounded-md text-gray-900">{userData.name}</div>
               )}
             </div>
 
-            {/* Email Field */}
+            {/* Email Field (read-only) */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              {isEditing ? (
-                <div>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    className={errors.email ? "border-red-500" : ""}
-                  />
-                  {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
-                </div>
-              ) : (
-                <div className="p-3 bg-gray-50 rounded-md text-gray-900">{userData.email}</div>
-              )}
+              <div className="p-3 bg-gray-50 rounded-md text-gray-900">{userData.email}</div>
             </div>
 
             {/* Password Fields */}
@@ -562,19 +628,51 @@ export default function ProfilePage() {
                     </Button>
                   </div>
                   {errors.newPassword && <p className="text-sm text-red-600 mt-1">{errors.newPassword}</p>}
+                  {/* Password Requirements (live) */}
+                  {formData.newPassword && (
+                    <div className="space-y-1 mt-2">
+                      {passwordRequirements.map((req, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm">
+                          <Check className={`w-3 h-3 ${req.met ? "text-green-600" : "text-gray-400"}`} />
+                          <span className={req.met ? "text-green-600" : "text-gray-500"}>{req.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    className={errors.confirmPassword ? "border-red-500" : ""}
-                    placeholder="Confirm new password"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      className={errors.confirmPassword ? "border-red-500" : ""}
+                      placeholder="Confirm new password"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4 text-gray-400" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-gray-400" />
+                      )}
+                    </Button>
+                  </div>
                   {errors.confirmPassword && <p className="text-sm text-red-600 mt-1">{errors.confirmPassword}</p>}
+                  {formData.confirmPassword && (
+                    <div className="flex items-center gap-2 text-sm mt-1">
+                      <Check className={`w-3 h-3 ${passwordsMatch ? "text-green-600" : "text-gray-400"}`} />
+                      <span className={passwordsMatch ? "text-green-600" : "text-gray-500"}>Passwords match</span>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -583,7 +681,13 @@ export default function ProfilePage() {
             <div className="flex gap-3 pt-4">
               {isEditing ? (
                 <>
-                  <Button onClick={handleConfirm} className="bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    onClick={handleConfirm}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={
+                      formData.newPassword !== "" && (!isNewPasswordValid || !passwordsMatch || !formData.currentPassword)
+                    }
+                  >
                     Confirm
                   </Button>
                   <Button variant="outline" onClick={handleCancel}>
@@ -600,6 +704,7 @@ export default function ProfilePage() {
         </Card>
       </div>
     </div>
+    </AuthGuard>
   )
 }
 
