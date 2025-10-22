@@ -24,8 +24,8 @@ export class Meetup {
     constructor(
         public id: string,
         public title: string,
-        public dateTime: Date, 
-        public destination: string, // TODO update to destination ID
+        public dateTime: Date,
+        public destination: HangoutSpot,
         public creator: User
     ) {
         this.members.push(creator)
@@ -37,13 +37,13 @@ export class Meetup {
     static async create(
         title: string,
         dateTime: Date,
-        destination: string,
+        destination: HangoutSpot,
         creator: User
     ): Promise<Meetup> {
         try {
             // Generate a new document reference (with auto-generated ID)
             const meetupRef = doc(collection(db, "meetups"));
-            
+
             // Create the Meetup object with Firebase ID
             const meetup = new Meetup(
                 meetupRef.id,
@@ -53,15 +53,26 @@ export class Meetup {
                 creator
             );
 
-            // Save to Firestore
+            // Save to Firestore with destination as object
             await setDoc(meetupRef, {
                 title: meetup.title,
                 dateTime: meetup.dateTime,
-                destination: meetup.destination,
+                destination: {
+                    id: meetup.destination.id,
+                    name: meetup.destination.name,
+                    category: meetup.destination.category,
+                    priceRange: meetup.destination.priceRange,
+                    rating: meetup.destination.rating,
+                    reviewCount: meetup.destination.reviewCount,
+                    coordinates: meetup.destination.coordinates,
+                    address: meetup.destination.address,
+                    thumbnailUrl: meetup.destination.thumbnailUrl,
+                    openingHours: meetup.destination.openingHours,
+                },
                 creatorId: meetup.creator.id,
                 memberIds: meetup.getMemberIds(),
             });
-            
+
             console.log("Meetup created with ID:", meetupRef.id);
             return meetup;
         } catch (e) {
@@ -112,11 +123,27 @@ export class Meetup {
                 console.error(`❌ Creator ${data.creatorId} not found`);
                 throw new Error("Creator not found");
             }
+
+            // Parse destination as HangoutSpot
+            const destinationData = data.destination
+            const destination = new HangoutSpot(
+                destinationData.id,
+                destinationData.name,
+                destinationData.category,
+                destinationData.priceRange,
+                destinationData.rating,
+                destinationData.reviewCount,
+                destinationData.coordinates,
+                destinationData.address,
+                destinationData.thumbnailUrl,
+                destinationData.openingHours
+            )
+
             const meetup = new Meetup(
                 meetupDoc.id,
                 data.title,
                 dateTime,
-                data.destination,
+                destination,
                 creator!
             );
             
@@ -144,7 +171,18 @@ export class Meetup {
             await updateDoc(doc(db, "meetups", this.id), {
                 title: this.title,
                 dateTime: this.dateTime.toISOString(),
-                destination: this.destination,
+                destination: {
+                    id: this.destination.id,
+                    name: this.destination.name,
+                    category: this.destination.category,
+                    priceRange: this.destination.priceRange,
+                    rating: this.destination.rating,
+                    reviewCount: this.destination.reviewCount,
+                    coordinates: this.destination.coordinates,
+                    address: this.destination.address,
+                    thumbnailUrl: this.destination.thumbnailUrl,
+                    openingHours: this.destination.openingHours,
+                },
                 memberIds: this.getMemberIds(),
                 updatedAt: new Date().toISOString()
             });
@@ -252,7 +290,7 @@ export class Meetup {
         return this.dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
 
-    tempGetDestination(): string {
+    getDestination(): HangoutSpot {
         return this.destination
     }
 
@@ -265,8 +303,8 @@ export class Meetup {
         return this.members.map(member => member.id)
     }
 
-    updateDetails(newTitle: string, newDateTime: Date, newDestination: string): boolean {
-        if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.tempUpdateDestination(newDestination)) {
+    updateDetails(newTitle: string, newDateTime: Date, newDestination: HangoutSpot): boolean {
+        if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.updateDestination(newDestination)) {
             this.save();
             return true
         }
@@ -285,12 +323,7 @@ export class Meetup {
         return false
     }
 
-    // updateDestination(newHangoutSpot: HangoutSpot): boolean {
-    //     this.destination = newHangoutSpot
-    //     return true
-    // }
-
-    tempUpdateDestination(newDestination: string): boolean {
+    updateDestination(newDestination: HangoutSpot): boolean {
         this.destination = newDestination
         return true
     }

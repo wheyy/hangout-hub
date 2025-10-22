@@ -55,7 +55,7 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
       id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       meetupId: meetup.id,
       meetupTitle: meetup.title,
-      destination: meetup.destination,
+      destination: meetup.destination.name,
       dateTime: meetup.dateTime,
       senderId: CURRENT_USER!.id,
       senderName: CURRENT_USER!.name,

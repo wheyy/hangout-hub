@@ -34,36 +34,40 @@ export default function MeetupPage({ params }: MeetupPageProps) {
   const [meetup, setMeetup] = useState<Meetup | null>(null)
   const router = useRouter()
 
-  if (!CURRENT_USER) {
-    router.push("/auth/login")
-    return null
-  }
-
   // Load meetup from store
   useEffect(() => {
-    const meetups = CURRENT_USER!.getMeetups()
+    if (!CURRENT_USER) {
+      router.push("/auth/login")
+      return
+    }
+
+    const meetups = CURRENT_USER.getMeetups()
     const foundMeetup = meetups.find((m) => m.id === params.id)
     if (foundMeetup) {
       setMeetup(foundMeetup)
+    } else {
+      router.push("/meetups")
     }
-  }, [params.id, CURRENT_USER])
+  }, [params.id, CURRENT_USER, router])
 
-  if (!meetup) {
+  if (!meetup || !CURRENT_USER) {
     return (
       <div className="h-screen flex items-center justify-center">
-        Meetup Not Found
-        <button onClick={() => router.push("/meetups")}>Go Back</button>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Loading meetup...</p>
+        </div>
       </div>
     )
   }
 
-  const isCreator = meetup.creator.getId() === CURRENT_USER!.getId()
+  const isCreator = meetup.creator.getId() === CURRENT_USER.getId()
   const canInvite = isCreator && meetup.getMemberCount() < 5
 
   const handleSettingsClick = () => {
     setEditData({
       title: meetup.title,
-      destination: meetup.destination,
+      destination: meetup.destination.name,
       date: meetup.dateTime.toISOString().split("T")[0], // "YYYY-MM-DD"
       time: meetup.dateTime.toTimeString().split(" ")[0].slice(0, 5), // "HH:mm"
     })
@@ -74,7 +78,10 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     const [year, month, day] = editData.date.split("-").map(Number)
     const [hour, minute] = editData.time.split(":").map(Number)
 
-    meetup.updateDetails(editData.title, new Date(year, month - 1, day, hour, minute), editData.destination)
+    // Note: Destination editing disabled for now - would need autocomplete implementation
+    meetup.updateTitle(editData.title)
+    meetup.updateDateTime(new Date(year, month - 1, day, hour, minute))
+    meetup.save()
     setMeetup(meetup)
     setIsEditing(false)
   }
@@ -99,7 +106,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
               <h1 className="text-lg font-semibold text-gray-900">{meetup.title}</h1>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <MapPin className="w-3 h-3" />
-                <span>{meetup.destination}</span>
+                <span>{meetup.destination.name}</span>
                 {meetup.getStatus() === "active" ? (
                   <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
                 ) : (
@@ -212,12 +219,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
       <div className="flex-1 overflow-hidden">
         {activeTab === "map" ? (
           <LiveMapView
-            meetupId={meetup.id}
-            destination={{
-              lat: 1.2986,
-              lng: 103.8567,
-              name: meetup.destination,
-            }}
+            meetup={meetup}
           />
         ) : (
           <div className="h-full overflow-y-auto p-4">

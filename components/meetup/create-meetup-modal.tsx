@@ -1,18 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MapPin, Calendar, Clock } from "lucide-react"
-// import { CURRENT_USER } from "@/lib/mock-data"
+import { MapPin, Calendar, Clock, Loader2, X } from "lucide-react"
 import { Meetup } from "@/lib/data/meetup"
-// import { getMeetups, saveMeetups } from "@/lib/invitation-utils"
 import { useRouter } from "next/navigation"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
-import { on } from "events"
 import { useUserStore } from "@/hooks/user-store"
+import { GooglePlacesService } from "@/lib/services/google-places"
 
 
 interface CreateMeetupModalProps {
@@ -24,19 +22,70 @@ interface CreateMeetupModalProps {
 export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
   const [formData, setFormData] = useState({
     title: "",
-    destination: "",
     date: "",
-    time: "10:00", // 24h HH:mm from <input type="time">
+    time: "10:00",
   })
+
+  const [destinationQuery, setDestinationQuery] = useState("")
+  const [selectedDestination, setSelectedDestination] = useState<HangoutSpot | null>(null)
+  const [suggestions, setSuggestions] = useState<Array<{placeId: string, description: string}>>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+  const debounceTimerRef = useRef<NodeJS.Timeout>()
+  const suggestionsRef = useRef<HTMLDivElement>(null)
 
   const CURRENT_USER = useUserStore((s) => s.user);
   const router = useRouter();
   const [countdown, setCountdown] = useState(10);
 
 
+  // Handle autocomplete for destination
+  useEffect(() => {
+    if (destinationQuery.length < 2) {
+      setSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current)
+    }
+
+    debounceTimerRef.current = setTimeout(async () => {
+      setIsLoadingSuggestions(true)
+      try {
+        const results = await GooglePlacesService.autocomplete(destinationQuery)
+        setSuggestions(results)
+        setShowSuggestions(results.length > 0)
+      } catch (error) {
+        console.error("Autocomplete error:", error)
+        setSuggestions([])
+      } finally {
+        setIsLoadingSuggestions(false)
+      }
+    }, 300)
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current)
+      }
+    }
+  }, [destinationQuery])
+
+  // Click outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
   useEffect(() => {
     if (!CURRENT_USER) {
-      // Countdown from 10 to 0
       const interval = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
@@ -46,8 +95,8 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
           }
           return prev - 1;
         });
-      }, 1000); // Update every second
-  
+      }, 1000);
+
       return () => clearInterval(interval);
     }
   }, [CURRENT_USER, router]);
@@ -63,28 +112,58 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
     );
   }
 
+  const handleSuggestionClick = async (suggestion: {placeId: string, description: string}) => {
+    setDestinationQuery(suggestion.description)
+    setShowSuggestions(false)
+    setIsLoadingSuggestions(true)
+
+    try {
+      const placeDetails = await GooglePlacesService.searchPlace(suggestion.description)
+      if (placeDetails) {
+        const hangoutSpot = new HangoutSpot(
+          placeDetails.placeId,
+          placeDetails.name,
+          placeDetails.types[0] || "place",
+          "$$", // Default price level
+          0, // Default rating
+          0, // Default review count
+          [placeDetails.geometry.location.lng, placeDetails.geometry.location.lat],
+          placeDetails.name, // Use name as address for now
+          "", // No thumbnail
+          "" // No opening hours
+        )
+        setSelectedDestination(hangoutSpot)
+      }
+    } catch (error) {
+      console.error("Error fetching place details:", error)
+    } finally {
+      setIsLoadingSuggestions(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
-
-    const [year, month, day] = formData.date.split("-").map(Number)   // "YYYY-MM-DD"
-    const [hour, minute]      = formData.time.split(":").map(Number)   // "HH:mm"
-
-    const dateTime = new Date(year, month - 1, day, hour, minute)
-
     e.preventDefault()
 
-    const newMeetup: Meetup = await Meetup.create(
-      formData.title, // title
-      //format dd/mm/yyyy
-      dateTime, //dateTime
-      formData.destination, // destination
-      CURRENT_USER, // creator
-    )
-    // Meetup.saveMeetupToFirestore(newMeetup)
+    if (!selectedDestination) {
+      alert("Please select a destination from the suggestions")
+      return
+    }
 
-    // onCreated?.(newMeetup)
+    const [year, month, day] = formData.date.split("-").map(Number)
+    const [hour, minute] = formData.time.split(":").map(Number)
+    const dateTime = new Date(year, month - 1, day, hour, minute)
+
+    const newMeetup: Meetup = await Meetup.create(
+      formData.title,
+      dateTime,
+      selectedDestination,
+      CURRENT_USER!
+    )
 
     // Reset form
-    setFormData({ title: "", destination: "", date: "", time: "10:00" })
+    setFormData({ title: "", date: "", time: "10:00" })
+    setDestinationQuery("")
+    setSelectedDestination(null)
     onClose()
 
     // Redirect to new meetup page
@@ -113,19 +192,59 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
             />
           </div>
 
-          <div>
+          <div className="relative" ref={suggestionsRef}>
             <Label htmlFor="destination" className="text-sm font-medium flex items-center gap-2">
               <MapPin className="w-4 h-4" />
               Destination
             </Label>
-            <Input
-              id="destination"
-              placeholder="e.g., Marina Bay Sands SkyPark"
-              value={formData.destination}
-              onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-              required
-              className="mt-1"
-            />
+            <div className="relative mt-1">
+              <Input
+                id="destination"
+                placeholder="Search for a place..."
+                value={destinationQuery}
+                onChange={(e) => setDestinationQuery(e.target.value)}
+                required
+                className={selectedDestination ? "border-green-500" : ""}
+              />
+              {isLoadingSuggestions && (
+                <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
+              )}
+              {selectedDestination && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedDestination(null)
+                    setDestinationQuery("")
+                  }}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X className="w-4 h-4 text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
+
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                {suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.placeId}
+                    type="button"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2 text-sm"
+                  >
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    {suggestion.description}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {selectedDestination && (
+              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                Selected: {selectedDestination.name}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
