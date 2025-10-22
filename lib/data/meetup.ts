@@ -16,9 +16,18 @@ import {
 import { useUserStore } from "../../hooks/user-store";
 import { use } from "react";
 
+export interface MemberStatus {
+    userId: string
+    status: "traveling" | "arrived"
+    locationSharingEnabled: boolean
+    arrivedAt: string | null
+    joinedAt: string
+}
+
 // Feel free to update this class, I did not vet the behaviours
 export class Meetup {
     private members: User[] = []
+    private memberStatuses: Map<string, MemberStatus> = new Map()
     
     
     constructor(
@@ -29,6 +38,13 @@ export class Meetup {
         public creator: User
     ) {
         this.members.push(creator)
+        this.memberStatuses.set(creator.id, {
+            userId: creator.id,
+            status: "traveling",
+            locationSharingEnabled: true,
+            arrivedAt: null,
+            joinedAt: new Date().toISOString()
+        })
         creator.addMeetup(this)
         console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
@@ -54,6 +70,16 @@ export class Meetup {
             );
 
             // Save to Firestore with destination as object
+            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
+            meetup.memberStatuses.forEach((status, userId) => {
+                memberStatusesObj[userId] = {
+                    status: status.status,
+                    locationSharingEnabled: status.locationSharingEnabled,
+                    arrivedAt: status.arrivedAt,
+                    joinedAt: status.joinedAt
+                }
+            })
+
             await setDoc(meetupRef, {
                 title: meetup.title,
                 dateTime: meetup.dateTime,
@@ -71,6 +97,7 @@ export class Meetup {
                 },
                 creatorId: meetup.creator.id,
                 memberIds: meetup.getMemberIds(),
+                members: memberStatusesObj,
             });
 
             console.log("Meetup created with ID:", meetupRef.id);
@@ -147,13 +174,25 @@ export class Meetup {
                 creator!
             );
             
+            // Load member statuses
+            if (data.members) {
+                Object.entries(data.members).forEach(([userId, statusData]: [string, any]) => {
+                    meetup.memberStatuses.set(userId, {
+                        userId,
+                        status: statusData.status || "traveling",
+                        locationSharingEnabled: statusData.locationSharingEnabled ?? true,
+                        arrivedAt: statusData.arrivedAt || null,
+                        joinedAt: statusData.joinedAt
+                    })
+                })
+            }
             
-            // TO BE IMPLEMENTED: Fetch users from user db
+            // Fetch users from user db
             data.memberIds.forEach(async (memberId: string) => {
                 if (memberId !== meetup.creator.id) {
                     const member = await User.loadFromFirestore(memberId);
                     if (member) {
-                        meetup.addMember(member);
+                        meetup.addMemberWithoutStatus(member);
                     }
                 }
             });
@@ -168,6 +207,16 @@ export class Meetup {
     // ✅ Update meetup in Firestore
     async save(): Promise<boolean> {
         try {
+            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
+            this.memberStatuses.forEach((status, userId) => {
+                memberStatusesObj[userId] = {
+                    status: status.status,
+                    locationSharingEnabled: status.locationSharingEnabled,
+                    arrivedAt: status.arrivedAt,
+                    joinedAt: status.joinedAt
+                }
+            })
+
             await updateDoc(doc(db, "meetups", this.id), {
                 title: this.title,
                 dateTime: this.dateTime.toISOString(),
@@ -184,6 +233,7 @@ export class Meetup {
                     openingHours: this.destination.openingHours,
                 },
                 memberIds: this.getMemberIds(),
+                members: memberStatusesObj,
                 updatedAt: new Date().toISOString()
             });
             return true;
@@ -220,7 +270,21 @@ export class Meetup {
     async addMember(user: User): Promise<void> {
         if (!this.members.find(member => member.id === user.id)) {
             this.members.push(user);
+            this.memberStatuses.set(user.id, {
+                userId: user.id,
+                status: "traveling",
+                locationSharingEnabled: true,
+                arrivedAt: null,
+                joinedAt: new Date().toISOString()
+            })
             await this.save(); // Sync to Firestore
+        }
+    }
+
+    // Add member without updating status (used when loading from Firebase)
+    addMemberWithoutStatus(user: User): void {
+        if (!this.members.find(member => member.id === user.id)) {
+            this.members.push(user);
         }
     }
 
@@ -303,6 +367,48 @@ export class Meetup {
         return this.members.map(member => member.id)
     }
 
+    getMemberStatus(userId: string): MemberStatus | undefined {
+        return this.memberStatuses.get(userId)
+    }
+
+    getAllMemberStatuses(): Map<string, MemberStatus> {
+        return new Map(this.memberStatuses)
+    }
+
+    async updateMemberStatus(userId: string, status: "traveling" | "arrived"): Promise<boolean> {
+        const memberStatus = this.memberStatuses.get(userId)
+        if (memberStatus) {
+            memberStatus.status = status
+            if (status === "arrived") {
+                memberStatus.arrivedAt = new Date().toISOString()
+                memberStatus.locationSharingEnabled = false
+            } else {
+                memberStatus.arrivedAt = null
+            }
+            this.memberStatuses.set(userId, memberStatus)
+            return await this.save()
+        }
+        return false
+    }
+
+    async updateLocationSharing(userId: string, enabled: boolean): Promise<boolean> {
+        const memberStatus = this.memberStatuses.get(userId)
+        if (memberStatus) {
+            memberStatus.locationSharingEnabled = enabled
+            this.memberStatuses.set(userId, memberStatus)
+            return await this.save()
+        }
+        return false
+    }
+
+    allMembersArrived(): boolean {
+        return Array.from(this.memberStatuses.values()).every(status => status.status === "arrived")
+    }
+
+    getArrivedMemberCount(): number {
+        return Array.from(this.memberStatuses.values()).filter(status => status.status === "arrived").length
+    }
+
     updateDetails(newTitle: string, newDateTime: Date, newDestination: HangoutSpot): boolean {
         if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.updateDestination(newDestination)) {
             this.save();
@@ -365,5 +471,19 @@ export class Meetup {
     //       return false;
     //     }
     //   }
+
+  async endMeetup(): Promise<boolean> {
+    try {
+      const meetupRef = doc(db, "meetups", this.id)
+      await updateDoc(meetupRef, {
+        status: "ended",
+        endedAt: new Date(),
+      })
+      return true
+    } catch (error) {
+      console.error("Error ending meetup:", error)
+      return false
+    }
+  }
     
 }

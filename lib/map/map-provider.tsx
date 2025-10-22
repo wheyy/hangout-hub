@@ -76,7 +76,7 @@ export function MapProviderComponent({ children, options, className = "" }: MapP
   return (
     <MapContext.Provider value={{ map, isLoaded, error }}>
       <div className={`map-container ${className}`}>
-        <div ref={containerRef} className="absolute inset-0" />
+        <div ref={containerRef} className="w-full h-full" />
         {isLoaded && children}
       </div>
     </MapContext.Provider>

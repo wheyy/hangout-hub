@@ -13,6 +13,7 @@ export interface MemberLocation {
 export class LocationTrackingService {
   private listeners: Map<string, Unsubscribe> = new Map()
   private locationUpdateTimer: NodeJS.Timeout | null = null
+  private isTracking: boolean = false
 
   /**
    * Subscribe to location updates for a list of member IDs
@@ -52,6 +53,13 @@ export class LocationTrackingService {
    * Start tracking and updating current user's location
    */
   async startTrackingOwnLocation(userId: string): Promise<() => void> {
+    if (this.isTracking) {
+      console.log("Already tracking location")
+      return () => {}
+    }
+
+    this.isTracking = true
+
     // Get initial location
     await this.updateUserLocation(userId)
 
@@ -62,11 +70,34 @@ export class LocationTrackingService {
 
     // Return cleanup function
     return () => {
-      if (this.locationUpdateTimer) {
-        clearInterval(this.locationUpdateTimer)
-        this.locationUpdateTimer = null
-      }
+      this.stopTrackingOwnLocation(userId)
     }
+  }
+
+  /**
+   * Stop tracking current user's location
+   */
+  async stopTrackingOwnLocation(userId: string): Promise<void> {
+    if (this.locationUpdateTimer) {
+      clearInterval(this.locationUpdateTimer)
+      this.locationUpdateTimer = null
+    }
+    this.isTracking = false
+
+    // Clear location in Firebase
+    try {
+      await User.updateCurrentLocation(userId, null)
+      console.log(`Stopped tracking location for user ${userId}`)
+    } catch (error) {
+      console.error("Failed to clear location in Firestore:", error)
+    }
+  }
+
+  /**
+   * Check if currently tracking
+   */
+  isCurrentlyTracking(): boolean {
+    return this.isTracking
   }
 
   /**

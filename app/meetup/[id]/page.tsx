@@ -13,6 +13,7 @@ import { Meetup } from "@/lib/data/meetup"
 import { useUserStore } from "@/hooks/user-store"
 import { useRouter } from "next/navigation"
 import { DeleteMeetupModal } from "@/components/meetup/delete-meetup-modal"
+import { Toaster } from "@/components/ui/toaster"
 
 interface MeetupPageProps {
   params: { id: string }
@@ -225,41 +226,16 @@ export default function MeetupPage({ params }: MeetupPageProps) {
           <div className="h-full overflow-y-auto p-4">
             <GroupManagement
               meetupId={meetup.id}
+              meetup={meetup}
               isActive={meetup.getStatus() === "active"}
               onLocationShare={setIsLocationSharing}
+              isCreator={isCreator}
+              canInvite={canInvite}
+              onInvite={() => setIsInviteModalOpen(true)}
+              onDelete={() => setIsDeleteModalOpen(true)}
             />
           </div>
         )}
-      </div>
-
-      {/* Meetup Info Panel */}
-      <div className="bg-white border-t p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-4 h-4" />
-              <span>{meetup.getDateString()}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Clock className="w-4 h-4" />
-              <span>{meetup.getTimeString()}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Users className="w-4 h-4" />
-              <span>{meetup.getMemberCount()}/10 members</span>
-            </div>
-          </div>
-          {isCreator && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
-              onClick={() => setIsDeleteModalOpen(true)}   // <-- OPEN MODAL
-            >
-              End Meetup
-            </Button>
-          )}
-        </div>
       </div>
 
       {/* Send Invite Modal */}
@@ -275,6 +251,9 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         onClose={() => setIsDeleteModalOpen(false)}
         meetup={meetup}
       />
+
+      {/* Toaster for notifications */}
+      <Toaster />
     </div>
   )
 }
