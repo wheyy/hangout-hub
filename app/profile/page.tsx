@@ -279,6 +279,17 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -297,6 +308,7 @@ export default function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error" | "">("")
+  const [deleting, setDeleting] = useState(false)
 
   // Current user data
   const [userData, setUserData] = useState({
@@ -307,12 +319,14 @@ export default function ProfilePage() {
 
   // Form data for editing
   const [formData, setFormData] = useState({
+    newName: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
 
   const [errors, setErrors] = useState({
+    newName: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -336,6 +350,7 @@ export default function ProfilePage() {
       if (!mounted) return
       if (u) {
         setUserData({ name: u.name, email: u.email, password: "********" })
+        setFormData((prev) => ({ ...prev, newName: u.name }))
       }
     })
     return () => {
@@ -345,9 +360,15 @@ export default function ProfilePage() {
 
   const validateForm = () => {
     const newErrors = {
+      newName: "",
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
+    }
+
+    // Name validation (only if changed)
+    if (formData.newName !== undefined && formData.newName.trim() === "") {
+      newErrors.newName = "Name cannot be empty"
     }
 
     // Password validation (only if changing password)
@@ -374,12 +395,14 @@ export default function ProfilePage() {
     setIsEditing(true)
     setMessage("")
     setMessageType("")
+    // Ensure the edit input reflects the latest displayed name
+    setFormData((prev) => ({ ...prev, newName: userData.name }))
   }
 
   const handleCancel = () => {
     setIsEditing(false)
-    setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-    setErrors({ currentPassword: "", newPassword: "", confirmPassword: "" })
+    setFormData({ newName: userData.name, currentPassword: "", newPassword: "", confirmPassword: "" })
+    setErrors({ newName: "", currentPassword: "", newPassword: "", confirmPassword: "" })
     setMessage("")
     setMessageType("")
   }
@@ -389,16 +412,24 @@ export default function ProfilePage() {
     setMessageType("")
     if (!validateForm()) return
     try {
+      let updatedName = userData.name
+      // Update name if changed
+      if (formData.newName && formData.newName.trim() && formData.newName.trim() !== userData.name) {
+        updatedName = formData.newName.trim()
+        await authService.updateName(updatedName)
+        setUserData((prev) => ({ ...prev, name: updatedName }))
+      }
       if (formData.newPassword) {
         await authService.updatePassword(formData.currentPassword, formData.newPassword)
         setUserData((prev) => ({ ...prev, password: "********" }))
-        setMessage("Password updated successfully")
-        setMessageType("success")
       }
+      setMessage("Profile updated successfully")
+      setMessageType("success")
       setIsEditing(false)
-      setFormData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      // Reset form using the latest applied value to avoid flashing the old name on next edit
+      setFormData({ newName: updatedName, currentPassword: "", newPassword: "", confirmPassword: "" })
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Failed to update password")
+      setMessage(e instanceof Error ? e.message : "Failed to update profile")
       setMessageType("error")
     }
   }
@@ -410,6 +441,23 @@ export default function ProfilePage() {
     } catch (e) {
       setMessage("Failed to sign out. Please try again.")
       setMessageType("error")
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true)
+    setMessage("")
+    setMessageType("")
+    try {
+      await authService.deleteAccount()
+      // Redirect after deletion
+      router.push("/auth/login")
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete account"
+      setMessage(msg)
+      setMessageType("error")
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -451,6 +499,25 @@ export default function ProfilePage() {
           <Button variant="outline" size="sm" onClick={handleSignOut}>
             Sign out
           </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm">Delete account</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete your account and associated data. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
+                  {deleting ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </header>
 
@@ -479,10 +546,23 @@ export default function ProfilePage() {
               </div>
             )}
 
-            {/* Name Field (read-only) */}
+            {/* Name Field */}
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
-              <div className="p-3 bg-gray-50 rounded-md text-gray-900">{userData.name}</div>
+              {isEditing ? (
+                <div>
+                  <Input
+                    id="name"
+                    value={formData.newName}
+                    onChange={(e) => handleInputChange("newName", e.target.value)}
+                    className={errors.newName ? "border-red-500" : ""}
+                    placeholder="Enter full name"
+                  />
+                  {errors.newName && <p className="text-sm text-red-600 mt-1">{errors.newName}</p>}
+                </div>
+              ) : (
+                <div className="p-3 bg-gray-50 rounded-md text-gray-900">{userData.name}</div>
+              )}
             </div>
 
             {/* Email Field (read-only) */}

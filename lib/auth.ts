@@ -10,9 +10,13 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   type User,
+  deleteUser as fbDeleteUser,
+  sendPasswordResetEmail,
+  sendEmailVerification as fbSendEmailVerification,
 } from "firebase/auth"
+import { deleteDoc } from "firebase/firestore"
 import { doc, serverTimestamp, setDoc } from "firebase/firestore"
-import { useUserStore } from "@/hooks/user-store"
+// Note: Do NOT import user store here to avoid circular dependency.
 
 export interface AuthUser {
   id: string
@@ -74,6 +78,17 @@ export const authService = {
         email: cred.user.email ?? email,
         currentLocation: null,
       })
+      // Send email verification and sign out to enforce verification gate
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL
+        const actionCodeSettings = appUrl
+          ? { url: `${appUrl.replace(/\/$/, "")}/auth/verify/confirm`, handleCodeInApp: true }
+          : undefined
+        await fbSendEmailVerification(cred.user, actionCodeSettings as any)
+      } catch {
+        // ignore failures to send verification email
+      }
+      await fbSignOut(auth)
       // Return unified shape
       return {
         id: cred.user.uid,
@@ -89,9 +104,13 @@ export const authService = {
   async signIn(email: string, password: string): Promise<AuthUser> {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
+      // Block unverified emails
+      if (!cred.user.emailVerified) {
+        await fbSignOut(auth)
+        throw new Error("Please verify your email before signing in.")
+      }
       // Load user document; if missing, raise an error
       const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
-      useUserStore.getState().initializeUser()
       if (!u) throw new Error("User profile not found.")
       return {
         id: cred.user.uid,
@@ -100,7 +119,14 @@ export const authService = {
         avatar_url: cred.user.photoURL || undefined,
       }
     } catch (e: any) {
-      throw new Error(mapFirebaseError(e?.code || ""))
+      // Preserve explicit error messages (e.g., verification required)
+      if (e && typeof e === "object" && "code" in e && e.code) {
+        return Promise.reject(new Error(mapFirebaseError((e as any).code)))
+      }
+      if (e instanceof Error && e.message) {
+        return Promise.reject(e)
+      }
+      return Promise.reject(new Error("Something went wrong. Please try again."))
     }
   },
 
@@ -155,6 +181,74 @@ export const authService = {
       const code = e?.code || ""
       if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
         throw new Error("Current password is incorrect.")
+      }
+      throw new Error(mapFirebaseError(code))
+    }
+  },
+
+  async updateName(newName: string): Promise<void> {
+    const user = auth.currentUser
+    if (!user) throw new Error("Not authenticated.")
+    const name = newName?.trim()
+    if (!name) throw new Error("Name cannot be empty.")
+    await updateProfile(user, { displayName: name })
+    await AppUser.updateFields(user.uid, { name })
+  },
+
+    async deleteAccount(): Promise<void> {
+      const user = auth.currentUser
+      if (!user) throw new Error("Not authenticated.")
+      const uid = user.uid
+      try {
+        // Attempt to delete Firestore user document first
+        await deleteDoc(doc(db, "users", uid))
+      } catch (e) {
+        // Ignore doc deletion errors; proceed to delete auth user
+      }
+      try {
+        await fbDeleteUser(user)
+      } catch (e: any) {
+        const code = e?.code || ""
+        if (code === "auth/requires-recent-login") {
+          throw new Error("Please sign in again to delete your account.")
+        }
+        throw new Error("Failed to delete account. Please try again.")
+      }
+    },
+
+  async sendPasswordReset(email: string): Promise<void> {
+    try {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      const actionCodeSettings = appUrl
+        ? { url: `${appUrl.replace(/\/$/, "")}/auth/reset/confirm`, handleCodeInApp: true }
+        : undefined
+      await sendPasswordResetEmail(auth, email, actionCodeSettings as any)
+      // For privacy, do not reveal whether the email exists. Treat as success.
+    } catch (e: any) {
+      const code = e?.code || ""
+      if (code === "auth/invalid-email") {
+        throw new Error("Invalid email address.")
+      }
+      // Swallow other errors to avoid user enumeration
+    }
+  },
+
+  async resendVerification(email: string, password: string): Promise<void> {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL
+        const actionCodeSettings = appUrl
+          ? { url: `${appUrl.replace(/\/$/, "")}/auth/verify/confirm`, handleCodeInApp: true }
+          : undefined
+        await fbSendEmailVerification(cred.user, actionCodeSettings as any)
+      } finally {
+        await fbSignOut(auth)
+      }
+    } catch (e: any) {
+      const code = e?.code || ""
+      if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
+        throw new Error("Invalid email or password.")
       }
       throw new Error(mapFirebaseError(code))
     }
