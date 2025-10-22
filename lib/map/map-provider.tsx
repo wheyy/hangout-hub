@@ -1,16 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useEffect, useRef, useState } from "react"
-import type { MapAdapter, MapOptions, MapProvider } from "./types"
-import {APIProvider} from '@vis.gl/react-google-maps';
-import { MockMapAdapter } from "./adapters/mock-map"
-import { GoogleMapAdapter } from "./adapters/google-map-adapter";
-
+import type { MapOptions } from "./types"
+import { MapLibreMap } from "./maplibre-map"
 
 interface MapContextValue {
-  map: MapAdapter | null
+  map: MapLibreMap | null
   isLoaded: boolean
   error: string | null
 }
@@ -31,14 +27,13 @@ export const useMap = () => {
 
 interface MapProviderProps {
   children: React.ReactNode
-  provider?: MapProvider
   options: MapOptions
   className?: string
 }
 
-export function MapProviderComponent({ children, provider = "mock", options, className = "" }: MapProviderProps) {
+export function MapProviderComponent({ children, options, className = "" }: MapProviderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [map, setMap] = useState<MapAdapter | null>(null)
+  const [map, setMap] = useState<MapLibreMap | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,20 +43,9 @@ export function MapProviderComponent({ children, provider = "mock", options, cla
     const initializeMap = async () => {
       try {
         setError(null)
-
-        let adapter: MapAdapter        
-
-        switch (provider) {
-          case "google":
-            // TODO: Implement Google Maps adapter
-            throw new Error("Google Maps adapter not implemented yet")
-            // adapter = new GoogleMapAdapter();
-          default:
-            adapter = new MockMapAdapter()
-        }
-
-        await adapter.initialize(containerRef.current!, options)
-        setMap(adapter)
+        const mapInstance = new MapLibreMap()
+        await mapInstance.initialize(containerRef.current!, options)
+        setMap(mapInstance)
         setIsLoaded(true)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to initialize map")
@@ -76,13 +60,13 @@ export function MapProviderComponent({ children, provider = "mock", options, cla
         map.destroy()
       }
     }
-  }, [provider, options])
+  }, [])
 
   return (
     <MapContext.Provider value={{ map, isLoaded, error }}>
       <div className={`map-container ${className}`}>
         <div ref={containerRef} className="absolute inset-0" />
-        {children}
+        {isLoaded && children}
       </div>
     </MapContext.Provider>
   )

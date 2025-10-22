@@ -1,54 +1,31 @@
-export interface MapAdapter {
-  initialize(container: HTMLElement, options: MapOptions): Promise<void>
-  destroy(): void
-  setCenter(lng: number, lat: number): void
-  setZoom(zoom: number): void
-  fitBounds(bounds: [number, number, number, number]): void
-  addMarker(marker: MarkerOptions): string
-  removeMarker(id: string): void
-  addLayer(layer: LayerOptions): void
-  removeLayer(id: string): void
-  on(event: string, callback: (data: any) => void): void
-  off(event: string, callback: (data: any) => void): void
-  getCenter(): { lng: number; lat: number }
-  getZoom(): number
-  getBounds(): [number, number, number, number]
-}
-
 export interface MapOptions {
   center: [number, number]
   zoom: number
-  style?: string
-  interactive?: boolean
-  scrollZoom?: boolean
-  doubleClickZoom?: boolean
-  touchZoom?: boolean
-  dragPan?: boolean
 }
 
 export interface MarkerOptions {
   id: string
-  lng: number
-  lat: number
-  element?: HTMLElement
+  coordinates: [number, number]
+  title?: string
   popup?: string
-  className?: string
-  type?: "spot" | "parking" | "user"
-  data?: any
+  onClick?: () => void
+  isSelected?: boolean
+  color?: string // base color for unselected state (e.g., hangout spots)
+  type?: "hangout" | "parking" // marker type
+  availabilityPercentage?: number // for parking markers
 }
 
-export interface LayerOptions {
+export interface BoundaryOptions {
   id: string
-  type: "circle" | "line" | "fill" | "symbol"
-  source: any
-  paint?: any
-  layout?: any
+  bounds: {
+    northeast: { lat: number; lng: number }
+    southwest: { lat: number; lng: number }
+  }
 }
 
-export interface ClusterOptions {
-  radius: number
-  maxZoom: number
-  minPoints: number
+export interface RouteOptions {
+  id: string
+  coordinates: [number, number][]
+  color?: string
+  width?: number
 }
-
-export type MapProvider = "mock" | "google"
