@@ -93,6 +93,33 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     setEditData({ title: "", destination: "", date: "", time: "" })
   }
 
+  if (meetup.getStatus() === "completed") {
+    return (
+      <AuthGuard>
+        <div className="h-screen flex flex-col bg-gray-50">
+          <AppHeader currentPage="meetups" isAuthenticated={true} />
+
+          <header className="bg-white border-b px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Link href="/meetups">
+                <Button variant="ghost" size="sm" className="p-2">
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          </header>
+
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center p-8">
+              <div className="text-gray-400 text-2xl font-semibold mb-2">Past Meetup</div>
+              <p className="text-gray-500">To be implemented</p>
+            </div>
+          </div>
+        </div>
+      </AuthGuard>
+    )
+  }
+
   return (
     <AuthGuard>
     <div className="h-screen flex flex-col bg-gray-50">
@@ -111,11 +138,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <MapPin className="w-3 h-3" />
               <span>{meetup.destination.name}</span>
-              {meetup.getStatus() === "active" ? (
-                <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
-              ) : (
-                <Badge className="bg-gray-100 text-gray-800 text-xs">Completed</Badge>
-              )}
+              <Badge className="bg-green-100 text-green-800 text-xs">Active</Badge>
               {isCreator && <Badge className="bg-purple-100 text-purple-800 text-xs">Creator</Badge>}
             </div>
           </div>

@@ -14,6 +14,7 @@ interface HangoutSpotCardProps {
   onClick?: () => void
   onBack?: () => void
   onGetDirections?: (spot: HangoutSpot) => void
+  onOpenCreateMeetup?: (spot: HangoutSpot) => void
 }
 
 function getPriceRangeColor(priceRange: string) {
@@ -39,21 +40,18 @@ function getOpenStatus(openingHours: string) {
   }
 }
 
-export function HangoutSpotCard({ spot, variant, onClick, onBack, onGetDirections }: HangoutSpotCardProps) {
+export function HangoutSpotCard({ spot, variant, onClick, onBack, onGetDirections, onOpenCreateMeetup }: HangoutSpotCardProps) {
   const [imageError, setImageError] = useState(false)
   const router = useRouter()
   const currentUser = useUserStore((s) => s.user)
 
   const handleCreateMeetup = () => {
-    // Check if user is logged in
     if (!currentUser) {
-      // Redirect to sign up page
       router.push('/auth/register')
       return
     }
 
-    // Navigate to meetups page
-    router.push('/meetups')
+    onOpenCreateMeetup?.(spot)
   }
 
   if (variant === "compact") {

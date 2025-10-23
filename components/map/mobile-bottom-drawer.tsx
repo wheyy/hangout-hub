@@ -17,6 +17,7 @@ interface MobileBottomDrawerProps {
   onSpotClick: (spot: HangoutSpot) => void
   onSpotBack: () => void
   onSpotGetDirections?: (spot: HangoutSpot) => void
+  onOpenCreateMeetup?: (spot: HangoutSpot) => void
 
   // Parking props
   carparks: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>
@@ -33,6 +34,7 @@ export function MobileBottomDrawer({
   onSpotClick,
   onSpotBack,
   onSpotGetDirections,
+  onOpenCreateMeetup,
   carparks,
   selectedCarpark,
   onCarparkSelect,
@@ -446,6 +448,7 @@ export function MobileBottomDrawer({
                 variant="expanded"
                 onBack={onSpotBack}
                 onGetDirections={onSpotGetDirections}
+                onOpenCreateMeetup={onOpenCreateMeetup}
               />
             ) : (
               <div className="p-3 space-y-2">

@@ -119,9 +119,9 @@ export default function MeetupsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-              {activeMeetups.length > 0 ?  
+              {activeMeetups.length > 0 ?
                 (activeMeetups.map((meetup) => (
-                  <Link key={meetup.id} href={`/meetup/${meetup.id}`}>
+                  <Link key={meetup.id} href={`/meetup/${meetup.id}`} className="block">
                     <div className="flex flex-col gap-2 p-4 max-[650px]:p-3 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 max-[650px]:w-8 max-[650px]:h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -177,7 +177,7 @@ export default function MeetupsPage() {
               <div className="space-y-3">
                 {pastMeetups.length > 0 ? (
                   pastMeetups.map((meetup) => (
-                    <Link key={meetup.id} href={`/meetup/${meetup.id}`}>
+                    <Link key={meetup.id} href={`/meetup/${meetup.id}`} className="block">
                       <div className="flex flex-col gap-2 p-4 max-[650px]:p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors">
                         <div className="flex items-center gap-2">
                           <div className="w-10 h-10 max-[650px]:w-8 max-[650px]:h-8 bg-gray-600 rounded-lg flex items-center justify-center flex-shrink-0">

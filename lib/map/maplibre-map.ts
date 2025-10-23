@@ -312,13 +312,14 @@ export class MapLibreMap {
   addSearchPin(
     lng: number,
     lat: number,
-    onDragEnd: (coords: [number, number]) => void
+    onDragEnd: (coords: [number, number]) => void,
+    isLoading: boolean = false
   ): void {
     if (!this.map) return
 
     this.removeSearchPin()
 
-    const el = createSearchPinElement()
+    const el = createSearchPinElement(isLoading)
     this.searchPinCoordinates = [lng, lat]
 
     this.searchPin = new maplibregl.Marker({
@@ -473,6 +474,102 @@ export class MapLibreMap {
 
     this.layers.delete(fillId)
     this.layers.delete(outlineId)
+  }
+
+  updateSearchPinLoading(isLoading: boolean): void {
+    if (!this.searchPin) return
+
+    const el = this.searchPin.getElement()
+
+    // Clear existing content
+    el.innerHTML = ''
+
+    if (isLoading) {
+      // Loading state: blue pin with spinner
+      const svg = `
+        <svg width="64" height="74" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="search-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+              <feOffset dx="0" dy="3" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.4"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g filter="url(#search-shadow)">
+            <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z"
+                  fill="#3B82F6" stroke="white" stroke-width="3"/>
+          </g>
+        </svg>
+      `
+      el.innerHTML = svg
+
+      // Add CSS spinner in the center
+      const spinner = document.createElement("div")
+      spinner.className = "pin-spinner"
+      spinner.style.position = "absolute"
+      spinner.style.top = "14px"
+      spinner.style.left = "50%"
+      spinner.style.transform = "translateX(-50%)"
+      spinner.style.width = "18px"
+      spinner.style.height = "18px"
+      spinner.style.border = "2.5px solid white"
+      spinner.style.borderTopColor = "transparent"
+      spinner.style.borderRadius = "50%"
+      spinner.style.animation = "spin 1s linear infinite"
+      spinner.style.pointerEvents = "none"
+
+      // Add keyframes if not already added
+      if (!document.querySelector('#spin-keyframes')) {
+        const style = document.createElement('style')
+        style.id = 'spin-keyframes'
+        style.textContent = `
+          @keyframes spin {
+            0% { transform: translateX(-50%) rotate(0deg); }
+            100% { transform: translateX(-50%) rotate(360deg); }
+          }
+        `
+        document.head.appendChild(style)
+      }
+
+      el.appendChild(spinner)
+    } else {
+      // Normal state: blue pin with search icon
+      const svg = `
+        <svg width="64" height="74" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="search-shadow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+              <feOffset dx="0" dy="3" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.4"/>
+              </feComponentTransfer>
+              <feMerge>
+                <feMergeNode/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+          </defs>
+
+          <g filter="url(#search-shadow)">
+            <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z"
+                  fill="#3B82F6" stroke="white" stroke-width="3"/>
+
+            <g transform="translate(32, 20)" class="pin-icon">
+              <circle cx="0" cy="-2" r="7" stroke="white" stroke-width="2.5" fill="none"/>
+              <line x1="5" y1="2.5" x2="8" y2="5.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            </g>
+          </g>
+        </svg>
+      `
+      el.innerHTML = svg
+    }
   }
 
   removeSearchPin(): void {
