@@ -100,38 +100,38 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
     }
   }, [meetup, isCreator, hasShownAllArrivedModal])
 
-  // Handle location sharing toggle
-  const handleLocationToggle = async (enabled: boolean) => {
-    if (!currentUser) return
+  // // Handle location sharing toggle (there's a duplicate and this is not in use)
+  // const handleLocationToggle = async (enabled: boolean) => {
+  //   if (!currentUser) return
 
-    try {
-      setError(null)
-      setIsLocationSharing(enabled)
+  //   try {
+  //     setError(null)
+  //     setIsLocationSharing(enabled)
 
-      if (enabled) {
-        const success = await meetup.updateLocationSharing(currentUser.getId(), true)
-        if (!success) {
-          throw new Error("Failed to enable location sharing")
-        }
-      } else {
-        await locationService.stopTrackingOwnLocation(currentUser.id)
-        const success = await meetup.updateLocationSharing(currentUser.getId(), false)
-        if (!success) {
-          throw new Error("Failed to disable location sharing")
-        }
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to update location sharing"
-      setError(errorMessage)
-      setIsLocationSharing(!enabled) // Revert on error
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
-      console.error("Location toggle error:", err)
-    }
-  }
+  //     if (enabled) {
+  //       const success = await meetup.updateLocationSharing(currentUser.getId(), true)
+  //       if (!success) {
+  //         throw new Error("Failed to enable location sharing")
+  //       }
+  //     } else {
+  //       await locationService.stopTrackingOwnLocation(currentUser.id)
+  //       const success = await meetup.updateLocationSharing(currentUser.getId(), false)
+  //       if (!success) {
+  //         throw new Error("Failed to disable location sharing")
+  //       }
+  //     }
+  //   } catch (err) {
+  //     const errorMessage = err instanceof Error ? err.message : "Failed to update location sharing"
+  //     setError(errorMessage)
+  //     setIsLocationSharing(!enabled) // Revert on error
+  //     toast({
+  //       title: "Error",
+  //       description: errorMessage,
+  //       variant: "destructive",
+  //     })
+  //     console.error("Location toggle error:", err)
+  //   }
+  // }
 
   // Handle arrive button
   const handleArriveClick = () => {
@@ -314,6 +314,7 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
   const currentUser = useUserStore((s) => s.user)
   const [memberLocations, setMemberLocations] = useState<Map<string, [number, number] | null>>(new Map())
   const [isLocationSharing, setIsLocationSharing] = useState(true)
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null)
   const [isArriveModalOpen, setIsArriveModalOpen] = useState(false)
   const [isAllArrivedModalOpen, setIsAllArrivedModalOpen] = useState(false)
   const { toast } = useToast()
@@ -375,6 +376,71 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
     setIsNearDestination(distance <= ARRIVAL_RADIUS_METERS)
   }, [memberLocations, currentUser, destination, isArrived])
 
+  // ✅ Request location permission with better UX
+  const requestLocationPermission = async (): Promise<boolean> => {
+    try {
+      // Check current permission state
+      const permission = await navigator.permissions.query({ name: "geolocation" })
+      
+      console.log("📍 Permission state:", permission.state)
+      
+      if (permission.state === "granted") {
+        setHasLocationPermission(true)
+        return true
+      }
+      
+      if (permission.state === "denied") {
+        setHasLocationPermission(false)
+        setError("Location permission denied. Please enable it in browser settings.")
+        return false
+      }
+      
+      // Permission is "prompt" - request it
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log("✅ Location permission granted")
+            setHasLocationPermission(true)
+            setError(null)
+            resolve(true)
+          },
+          (error) => {
+            console.error("❌ Location permission denied:", error)
+            setHasLocationPermission(false)
+            setError("Location access denied. Please enable location services.")
+            resolve(false)
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        )
+      })
+    } catch (error) {
+      console.error("Error checking permission:", error)
+      setHasLocationPermission(false)
+      setError("Failed to check location permissions")
+      return false
+    }
+  }
+
+  // ✅ Initialize - check permission on mount
+  useEffect(() => {
+    const initializeLocation = async () => {
+      const granted = await requestLocationPermission()
+      
+      // If permission granted and user wants to share, start sharing
+      if (granted && currentMemberStatus?.locationSharingEnabled) {
+        handleLocationToggle(true)
+      } else {
+        handleLocationToggle(false)
+      }
+    }
+    
+    initializeLocation()
+  }, [])
+  
   // Handle location sharing toggle
   const handleLocationToggle = async (enabled: boolean) => {
     if (!currentUser) return
@@ -384,6 +450,13 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
       setIsLocationSharing(enabled)
 
       if (enabled) {
+        if(hasLocationPermission === false) {
+          const granted = await requestLocationPermission()
+          if (!granted) {
+            handleLocationToggle(false)
+            return
+          }
+        }
         const success = await meetup.updateLocationSharing(currentUser.getId(), true)
         if (!success) {
           throw new Error("Failed to enable location sharing")

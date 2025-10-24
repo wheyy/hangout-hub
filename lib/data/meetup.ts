@@ -358,9 +358,9 @@ export class Meetup {
         return this.destination
     }
 
-    getStatus(): "active" | "completed" {
+    getStatus(): "active" | "past" {
         const now = new Date()
-        return now < this.dateTime ? "active" : "completed"
+        return now < this.dateTime ? "active" : "past"
     }
 
     getMemberIds(): string[] {
