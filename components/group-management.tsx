@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX, Edit, Save, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Input } from "./ui/input"
+import { User } from "@/lib/data/user"
 
 
 interface GroupMember {
@@ -61,12 +62,9 @@ export function GroupManagement({
   onCancelEdit,
   onEditDataChange
 }: GroupManagementProps) {
-  const [isSharing, setIsSharing] = useState(false)
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null)
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
   const [inviteEmail, setInviteEmail] = useState("")
   const [hoveredMember, setHoveredMember] = useState<string | null>(null)
+  const groupMembers = meetup.getMembers()
 
   const handleGenerateLink = () => {
     // Generate invite link logic
@@ -79,88 +77,30 @@ export function GroupManagement({
     // For now, just showing the action in console
   }
 
-  const [groupMembers] = useState<GroupMember[]>([
-    {
-      id: "1",
-      name: "Alex Chen",
-      isSharing: true,
-      location: { lat: 1.2966, lng: 103.8547, timestamp: Date.now() },
-      status: "online",
-    },
-    {
-      id: "2",
-      name: "Sarah Kim",
-      isSharing: true,
-      location: { lat: 1.2976, lng: 103.8557, timestamp: Date.now() - 30000 },
-      status: "online",
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      isSharing: false,
-      status: "offline",
-    },
-  ])
+  // const [groupMembers] = useState<GroupMember[]>([
+  //   {
+  //     id: "1",
+  //     name: "Alex Chen",
+  //     isSharing: true,
+  //     location: { lat: 1.2966, lng: 103.8547, timestamp: Date.now() },
+  //     status: "online",
+  //   },
+  //   {
+  //     id: "2",
+  //     name: "Sarah Kim",
+  //     isSharing: true,
+  //     location: { lat: 1.2976, lng: 103.8557, timestamp: Date.now() - 30000 },
+  //     status: "online",
+  //   },
+  //   {
+  //     id: "3",
+  //     name: "Mike Johnson",
+  //     isSharing: false,
+  //     status: "offline",
+  //   },
+  // ])
 
-  const requestLocationPermission = async () => {
-    try {
-      const permission = await navigator.permissions.query({ name: "geolocation" })
-      setHasPermission(permission.state === "granted")
-
-      if (permission.state === "prompt") {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setHasPermission(true)
-            setCurrentLocation({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            })
-          },
-          () => setHasPermission(false),
-        )
-      }
-    } catch (error) {
-      setHasPermission(false)
-    }
-  }
-
-  const startLocationSharing = async () => {
-    if (!hasPermission) {
-      await requestLocationPermission()
-      return
-    }
-
-    setIsSharing(true)
-    onLocationShare(true)
-
-    const interval = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          })
-          setLastUpdate(new Date())
-        },
-        (error) => {
-          console.error("Location error:", error)
-        },
-      )
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }
-
-  const stopLocationSharing = () => {
-    setIsSharing(false)
-    onLocationShare(false)
-    setCurrentLocation(null)
-    setLastUpdate(null)
-  }
-
-  useEffect(() => {
-    requestLocationPermission()
-  }, [])
+  
 
   if (!isActive) {
     return (
@@ -318,7 +258,7 @@ export function GroupManagement({
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {groupMembers.map((member) => (
+            {groupMembers.map((member: User) => (
               <div
                 key={member.id}
                 className="relative flex items-center justify-between p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100"
@@ -337,7 +277,7 @@ export function GroupManagement({
                   <div>
                     <h4 className="font-medium text-gray-900">{member.name}</h4>
                     <div className="flex items-center gap-2">
-                      <Badge
+                      {/* <Badge
                         variant={member.status === "online" ? "default" : "secondary"}
                         className={`text-xs ${
                           member.status === "online"
@@ -348,23 +288,23 @@ export function GroupManagement({
                         }`}
                       >
                         {member.status === "online" ? "Online" : member.status === "arrived" ? "Arrived" : "Offline"}
-                      </Badge>
-                      {member.isSharing && (
+                      </Badge> */}
+                      {/* {member.isSharing && (
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <MapPin className="w-3 h-3" />
                           <span>Sharing location</span>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {member.location && (
+                  {/* {member.location && (
                     <div className="text-xs text-gray-500">
                       <div>Updated {Math.floor((Date.now() - member.location.timestamp) / 1000)}s ago</div>
                     </div>
-                  )}
+                  )} */}
 
                   {hoveredMember === member.id && (
                     <Button
