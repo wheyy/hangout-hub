@@ -4,13 +4,10 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Mail, X, Send, Search, Check } from "lucide-react"
-import { MOCK_USERS, useUserStore } from "@/hooks/user-store"
+import { Mail, Send, Check } from "lucide-react"
+import { useUserStore } from "@/hooks/user-store"
+import { findUserByEmail, sendInvitation } from "@/lib/invitation-utils"
 import { Meetup } from "@/lib/data/meetup"
-import { User } from "@/lib/data/user"
-import { Invitation } from "@/lib/data/invitation"
-import { getInvitations, saveInvitations } from "@/lib/invitation-utils"
 
 interface SendInviteModalProps {
   isOpen: boolean
@@ -19,74 +16,83 @@ interface SendInviteModalProps {
 }
 
 export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedUsers, setSelectedUsers] = useState<User[]>([])
+  const [emailInput, setEmailInput] = useState("")
+  const [error, setError] = useState("")
+  const [isSending, setIsSending] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const CURRENT_USER = useUserStore((s) => s.user);
-  
-  // Filter users: exclude current user, existing members, and apply search
-  const availableUsers = MOCK_USERS.filter((user: User) => {
-    if (user.id === CURRENT_USER!.id) return false // Exclude self
-    if (meetup.getMembers().some((member) => member.id === user.id)) return false // Exclude existing members
-    if (searchQuery && !user.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !user.email.toLowerCase().includes(searchQuery.toLowerCase())) return false
-    return true
-  })
 
-  const toggleUserSelection = (user: User) => {
-    if (selectedUsers.find((u) => u.id === user.id)) {
-      setSelectedUsers(selectedUsers.filter((u) => u.id !== user.id))
-    } else {
-      // Check if adding this user would exceed the limit
-      const totalAfterInvite = meetup.getMemberCount() + selectedUsers.length + 1
-      if (totalAfterInvite > 5) {
-        alert("Cannot invite more users. Meetup has a maximum of 5 members.")
-        return
-      }
-      setSelectedUsers([...selectedUsers, user])
+  const CURRENT_USER = useUserStore((s) => s.user)
+
+  // Helper to get destination as string or object
+  const getDestinationData = () => {
+    if (typeof meetup.destination === 'string') {
+      return meetup.destination
     }
+    // If it's an object, pass the whole object (it has name, address, etc.)
+    return meetup.destination.getName()
   }
 
-  const handleSendInvites = () => {
-    if (selectedUsers.length === 0) return
+  const handleSendByEmail = async () => {
+    setError("")
+    if (!emailInput.trim()) {
+      setError("Please enter an email.")
+      return
+    }
 
-    const existingInvitations = getInvitations()
-    const newInvitations: Invitation[] = selectedUsers.map((user) => ({
-      id: `inv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      meetupId: meetup.id,
-      meetupTitle: meetup.title,
-      destination: meetup.destination.name,
-      dateTime: meetup.dateTime,
-      senderId: CURRENT_USER!.id,
-      senderName: CURRENT_USER!.name,
-      senderEmail: CURRENT_USER!.email,
-      recipientId: user.id,
-      recipientEmail: user.email,
-      recipientName: user.name,
-      status: "pending",
-      sentAt: new Date().toISOString(),
-    }))
+    setIsSending(true)
+    try {
+      // Find recipient
+      const found = await findUserByEmail(emailInput.trim().toLowerCase())
+      if (!found) {
+        setError("User not found. Try again.")
+        setIsSending(false)
+        return
+      }
 
-    saveInvitations([...existingInvitations, ...newInvitations])
-    setShowSuccess(true)
-    setTimeout(() => {
-      setShowSuccess(false)
-      setSelectedUsers([])
-      setSearchQuery("")
-      onClose()
-    }, 2000)
+      // Guard: cannot invite self
+      if (found.id === CURRENT_USER!.id) {
+        setError("You cannot invite yourself.")
+        setIsSending(false)
+        return
+      }
+
+      // Send invitation
+      await sendInvitation({
+        meetupId: meetup.id,
+        meetupTitle: meetup.title,
+        destination: getDestinationData(), // ✅ Use helper to handle both formats
+        dateTime: meetup.dateTime,
+        senderId: CURRENT_USER!.id,
+        senderName: CURRENT_USER!.name,
+        senderEmail: CURRENT_USER!.email,
+        recipientEmail: emailInput.trim().toLowerCase(),
+      })
+
+      // Success UI
+      setEmailInput("")
+      setShowSuccess(true)
+      setTimeout(() => {
+        setShowSuccess(false)
+        onClose()
+      }, 1500)
+    } catch (err: any) {
+      console.error(err)
+      setError(err.message || "Failed to send invite")
+    } finally {
+      setIsSending(false)
+    }
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" />
-            Invite Members to {meetup.title}
+            Send Invite via Email
           </DialogTitle>
           <DialogDescription>
-            Search and select users to invite. Maximum {5 - meetup.getMemberCount()} more member(s) can join.
+            Invite someone to <strong>{meetup.title}</strong> by entering their email address.
           </DialogDescription>
         </DialogHeader>
 
@@ -95,93 +101,35 @@ export function SendInviteModal({ isOpen, onClose, meetup }: SendInviteModalProp
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Invitations Sent!</h3>
-            <p className="text-gray-600">Your invitations have been sent successfully.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Invitation Sent!</h3>
+            <p className="text-gray-600">Your invitation was sent successfully.</p>
           </div>
         ) : (
           <>
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
+            <Input
+              placeholder="Enter recipient email..."
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              className="mb-2"
+            />
+            {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
 
-            {/* Selected Users */}
-            {selectedUsers.length > 0 && (
-              <div className="bg-blue-50 rounded-lg p-3">
-                <p className="text-sm font-medium text-gray-700 mb-2">
-                  Selected ({selectedUsers.length})
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedUsers.map((user) => (
-                    <Badge
-                      key={user.id}
-                      className="bg-blue-600 text-white pl-3 pr-1 py-1 flex items-center gap-2"
-                    >
-                      {user.name}
-                      <button
-                        onClick={() => toggleUserSelection(user)}
-                        className="hover:bg-blue-700 rounded-full p-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* User List */}
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {availableUsers.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">
-                  {searchQuery ? "No users found matching your search." : "No available users to invite."}
-                </p>
-              ) : (
-                availableUsers.map((user:User) => {
-                  const isSelected = selectedUsers.find((u) => u.id === user.id)
-                  return (
-                    <div
-                      key={user.id}
-                      onClick={() => toggleUserSelection(user)}
-                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
-                        isSelected
-                          ? "bg-blue-50 border-blue-300"
-                          : "bg-white border-gray-200 hover:bg-gray-50"
-                      }`}
-                    >
-                      <div>
-                        <p className="font-medium text-gray-900">{user.name}</p>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                      </div>
-                      {isSelected && (
-                        <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  )
-                })
-              )}
-            </div>
-
-            {/* Action Buttons */}
             <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={onClose} className="flex-1">
                 Cancel
               </Button>
               <Button
-                onClick={handleSendInvites}
-                disabled={selectedUsers.length === 0}
+                onClick={handleSendByEmail}
+                disabled={isSending}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
               >
-                <Send className="w-4 h-4 mr-2" />
-                Send {selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                {isSending ? (
+                  "Sending..."
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" /> Send Invite
+                  </>
+                )}
               </Button>
             </div>
           </>
