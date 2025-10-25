@@ -45,7 +45,7 @@ export default function MeetupsPage() {
   )
   
   // ✅ Recalculate pastMeetup
-  const pastMeetups = useMemo(() => 
+  const pastMeetups = useMemo(
     () => meetups.filter((meetup) => meetup.getStatus() === "past"),
     [meetups]
   )

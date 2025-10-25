@@ -23,16 +23,8 @@ interface MeetupPageProps {
 export default function MeetupPage({ params }: MeetupPageProps) {
   // MeetupController
   const [activeTab, setActiveTab] = useState<"map" | "tracking">("tracking")
-  const [isLocationSharing, setIsLocationSharing] = useState(false)
-  const [isEditing, setIsEditing] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
-  const [editData, setEditData] = useState({
-    title: "",
-    destination: "",
-    date: "",
-    time: "",
-  })
   const CURRENT_USER = useUserStore((s) => s.user)
   const [meetup, setMeetup] = useState<Meetup | null>(null)
   const router = useRouter()
@@ -65,33 +57,6 @@ export default function MeetupPage({ params }: MeetupPageProps) {
 
   const isCreator = meetup.creator.getId() === CURRENT_USER.getId()
   const canInvite = isCreator && meetup.getMemberCount() < 5
-
-  const handleSettingsClick = () => {
-    setEditData({
-      title: meetup.title,
-      destination: meetup.destination.name,
-      date: meetup.dateTime.toISOString().split("T")[0], // "YYYY-MM-DD"
-      time: meetup.dateTime.toTimeString().split(" ")[0].slice(0, 5), // "HH:mm"
-    })
-    setIsEditing(true)
-  }
-
-  const handleSaveChanges = () => {
-    const [year, month, day] = editData.date.split("-").map(Number)
-    const [hour, minute] = editData.time.split(":").map(Number)
-
-    // Note: Destination editing disabled for now - would need autocomplete implementation
-    meetup.updateTitle(editData.title)
-    meetup.updateDateTime(new Date(year, month - 1, day, hour, minute))
-    meetup.save()
-    setMeetup(meetup)
-    setIsEditing(false)
-  }
-
-  const handleCancelEdit = () => {
-    setIsEditing(false)
-    setEditData({ title: "", destination: "", date: "", time: "" })
-  }
 
   // MeetupView
   return (
@@ -150,20 +115,11 @@ export default function MeetupPage({ params }: MeetupPageProps) {
           ) : (
             <div className="h-full overflow-y-auto p-4">
               <GroupManagement
-                meetupId={meetup.id}
-                meetup={meetup}
-                isActive={meetup.getStatus() === "active"}
-                onLocationShare={setIsLocationSharing}
+                cur_meetup={meetup}
                 isCreator={isCreator}
                 canInvite={canInvite}
                 onInvite={() => setIsInviteModalOpen(true)}
                 onDelete={() => setIsDeleteModalOpen(true)}
-                isEditing={isEditing}
-                editData={editData}
-                onEdit={handleSettingsClick}
-                onSaveEdit={handleSaveChanges}
-                onCancelEdit={handleCancelEdit}
-                onEditDataChange={setEditData}
               />
             </div>
           )}
@@ -173,20 +129,11 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         <div className="max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-2 h-full overflow-hidden">
           <div className="h-full overflow-y-auto p-4 border-r">
             <GroupManagement
-              meetupId={meetup.id}
-              meetup={meetup}
-              isActive={meetup.getStatus() === "active"}
-              onLocationShare={setIsLocationSharing}
+              cur_meetup={meetup}
               isCreator={isCreator}
               canInvite={canInvite}
               onInvite={() => setIsInviteModalOpen(true)}
               onDelete={() => setIsDeleteModalOpen(true)}
-              isEditing={isEditing}
-              editData={editData}
-              onEdit={handleSettingsClick}
-              onSaveEdit={handleSaveChanges}
-              onCancelEdit={handleCancelEdit}
-              onEditDataChange={setEditData}
             />
           </div>
           <div className="h-full overflow-hidden">

@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, Calendar, Clock, Check, X, User, Trash2 } from "lucide-react"
-import { Invitation } from "@/types/invitation"
+import { Invitation } from "@/lib/data/invitation"
 import {
   isInvitationExpired,
   acceptInvitation,

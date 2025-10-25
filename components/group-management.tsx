@@ -9,6 +9,8 @@ import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mai
 import { useState, useEffect } from "react"
 import { Input } from "./ui/input"
 import { User } from "@/lib/data/user"
+import { Meetup } from "@/lib/data/meetup"
+import { useUserStore } from "@/hooks/user-store"
 
 
 interface GroupMember {
@@ -25,94 +27,73 @@ interface GroupMember {
 }
 
 interface GroupManagementProps {
-  meetupId: string
-  meetup: any
-  isActive: boolean
-  onLocationShare: (enabled: boolean) => void
+  cur_meetup: Meetup
   isCreator: boolean
   canInvite: boolean
   onInvite: () => void
   onDelete: () => void
-  isEditing?: boolean
-  editData?: {
-    title: string
-    destination: string
-    date: string
-    time: string
-  }
-  onEdit?: () => void
-  onSaveEdit?: () => void
-  onCancelEdit?: () => void
-  onEditDataChange?: (data: any) => void
 }
 
 export function GroupManagement({
-  meetupId,
-  meetup,
-  isActive,
-  onLocationShare,
+  cur_meetup,
   isCreator,
   canInvite,
   onInvite,
   onDelete,
-  isEditing = false,
-  editData,
-  onEdit,
-  onSaveEdit,
-  onCancelEdit,
-  onEditDataChange
 }: GroupManagementProps) {
   const [inviteEmail, setInviteEmail] = useState("")
+  const [meetup, setMeetup] = useState<Meetup>(cur_meetup)
   const [hoveredMember, setHoveredMember] = useState<string | null>(null)
   const groupMembers = meetup.getMembers()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    title: "",
+    destination: "",
+    date: "",
+    time: "",
+  })
 
-  const handleGenerateLink = () => {
-    // Generate invite link logic
-    console.log("Generating invite link for:", inviteEmail)
+
+  // const handleGenerateLink = () => {
+  //   // Generate invite link logic
+  //   console.log("Generating invite link for:", inviteEmail)
+  // }
+
+  const onEdit = () => {
+    setEditData({
+      title: meetup.title,
+      destination: meetup.destination.name,
+      date: meetup.dateTime.toISOString().split("T")[0], // "YYYY-MM-DD"
+      time: meetup.dateTime.toTimeString().split(" ")[0].slice(0, 5), // "HH:mm"
+    })
+    setIsEditing(true)
   }
 
-  const handleKickUser = (memberId: string, memberName: string) => {
-    console.log(`Kicking user ${memberName} (${memberId}) from meetup`)
+  const onSaveEdit = () => {
+    const [year, month, day] = editData.date.split("-").map(Number)
+    const [hour, minute] = editData.time.split(":").map(Number)
+
+    // Note: Destination editing disabled for now - would need autocomplete implementation
+    meetup.updateTitle(editData.title)
+    meetup.updateDateTime(new Date(year, month - 1, day, hour, minute))
+    meetup.save()
+    setMeetup(meetup)
+    setIsEditing(false)
+  }
+
+  const onCancelEdit = () => {
+    setIsEditing(false)
+    setEditData({ title: "", destination: "", date: "", time: "" })
+  }
+
+  const handleKickUser = (member: User) => {
+    console.log(`Kicking user ${member.getUsername()} (${member.getId}) from meetup`)
     // Here you would implement the actual kick logic
     // For now, just showing the action in console
+    meetup.removeMember(member).then(() => {
+      console.log(`User ${member.getUsername()} has been kicked from the meetup.`)
+    })
   }
-
-  // const [groupMembers] = useState<GroupMember[]>([
-  //   {
-  //     id: "1",
-  //     name: "Alex Chen",
-  //     isSharing: true,
-  //     location: { lat: 1.2966, lng: 103.8547, timestamp: Date.now() },
-  //     status: "online",
-  //   },
-  //   {
-  //     id: "2",
-  //     name: "Sarah Kim",
-  //     isSharing: true,
-  //     location: { lat: 1.2976, lng: 103.8557, timestamp: Date.now() - 30000 },
-  //     status: "online",
-  //   },
-  //   {
-  //     id: "3",
-  //     name: "Mike Johnson",
-  //     isSharing: false,
-  //     status: "offline",
-  //   },
-  // ])
-
-  
-
-  // if (!isActive) {
-  //   return (
-  //     <Card>
-  //       <CardContent className="p-6 text-center">
-  //         <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-  //         <h3 className="text-lg font-medium text-gray-900 mb-2">Location Sharing Inactive</h3>
-  //         <p className="text-gray-600">Join an active meetup to start sharing your location with the group.</p>
-  //       </CardContent>
-  //     </Card>
-  //   )
-  // }
 
   return (
     <div className="space-y-4">
@@ -144,13 +125,13 @@ export function GroupManagement({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isEditing && editData && onEditDataChange ? (
+          {isEditing && editData && setEditData ? (
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Meetup Name</label>
                 <Input
                   value={editData.title}
-                  onChange={(e) => onEditDataChange({ ...editData, title: e.target.value })}
+                  onChange={(e) => setEditData({ ...editData, title: e.target.value })}
                   placeholder="Enter meetup name"
                   className="text-sm"
                 />
@@ -159,7 +140,7 @@ export function GroupManagement({
                 <label className="block text-xs font-medium text-gray-700 mb-1">Destination</label>
                 <Input
                   value={editData.destination}
-                  onChange={(e) => onEditDataChange({ ...editData, destination: e.target.value })}
+                  onChange={(e) => setEditData({ ...editData, destination: e.target.value })}
                   placeholder="Enter destination"
                   className="text-sm"
                   disabled
@@ -172,7 +153,7 @@ export function GroupManagement({
                   <Input
                     type="date"
                     value={editData.date}
-                    onChange={(e) => onEditDataChange({ ...editData, date: e.target.value })}
+                    onChange={(e) => setEditData({ ...editData, date: e.target.value })}
                     className="text-sm"
                   />
                 </div>
@@ -181,7 +162,7 @@ export function GroupManagement({
                   <Input
                     type="time"
                     value={editData.time}
-                    onChange={(e) => onEditDataChange({ ...editData, time: e.target.value })}
+                    onChange={(e) => setEditData({ ...editData, time: e.target.value })}
                     className="text-sm"
                   />
                 </div>
@@ -306,11 +287,11 @@ export function GroupManagement({
                     </div>
                   )} */}
 
-                  {hoveredMember === member.id && (
+                  {(hoveredMember != meetup.creator.getId()) && (isCreator) && (hoveredMember === member.id) && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleKickUser(member.id, member.name)}
+                      onClick={() => handleKickUser(member)}
                       className="ml-2 h-8 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
                     >
                       <UserX className="w-4 h-4" />

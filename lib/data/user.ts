@@ -62,6 +62,8 @@ export class User {
     }
 
     getMeetups(): Array<Meetup> {
+        //check to ensure user is still a member of the meetups
+        this.meetups = this.meetups.filter((m) => m.getMemberIds().includes(this.id))
         return this.meetups
     }
 

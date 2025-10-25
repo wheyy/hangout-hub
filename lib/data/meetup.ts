@@ -24,7 +24,6 @@ export interface MemberStatus {
     joinedAt: string
 }
 
-// Feel free to update this class, I did not vet the behaviours
 export class Meetup {
     private members: User[] = []
     private memberStatuses: Map<string, MemberStatus> = new Map()
@@ -291,6 +290,7 @@ export class Meetup {
     // ✅ Remove member and update Firestore
     async removeMember(user: User): Promise<void> {
         this.members = this.members.filter(member => member.id !== user.id);
+        user.removeMeetup(this);
         await this.save(); // Sync to Firestore
     }
 
