@@ -21,11 +21,12 @@ interface MeetupPageProps {
 }
 
 export default function MeetupPage({ params }: MeetupPageProps) {
+  // MeetupController
   const [activeTab, setActiveTab] = useState<"map" | "tracking">("tracking")
   const [isLocationSharing, setIsLocationSharing] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false) // <-- NEW
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [editData, setEditData] = useState({
     title: "",
     destination: "",
@@ -36,7 +37,6 @@ export default function MeetupPage({ params }: MeetupPageProps) {
   const [meetup, setMeetup] = useState<Meetup | null>(null)
   const router = useRouter()
 
-  // Load meetup from store
   useEffect(() => {
     if (!CURRENT_USER) {
       router.push("/auth/login")
@@ -93,7 +93,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
     setEditData({ title: "", destination: "", date: "", time: "" })
   }
 
-
+  // MeetupView
   return (
     <AuthGuard>
     <div className="h-screen flex flex-col bg-gray-50">
@@ -202,7 +202,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         meetup={meetup}
       />
 
-      {/* Delete Meetup Modal (NEW) */}
+      {/* Delete Meetup Modal */}
       <DeleteMeetupModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

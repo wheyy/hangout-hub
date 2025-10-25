@@ -314,7 +314,7 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
   const currentUser = useUserStore((s) => s.user)
   const [memberLocations, setMemberLocations] = useState<Map<string, [number, number] | null>>(new Map())
   const [isLocationSharing, setIsLocationSharing] = useState(true)
-  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null)
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false)
   const [isArriveModalOpen, setIsArriveModalOpen] = useState(false)
   const [isAllArrivedModalOpen, setIsAllArrivedModalOpen] = useState(false)
   const { toast } = useToast()
@@ -417,6 +417,7 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           }
         )
       })
+      handleLocationToggle(hasLocationPermission)
     } catch (error) {
       console.error("Error checking permission:", error)
       setHasLocationPermission(false)
@@ -462,6 +463,7 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           throw new Error("Failed to enable location sharing")
         }
       } else {
+        requestLocationPermission()
         await locationService.stopTrackingOwnLocation(currentUser.id)
         const success = await meetup.updateLocationSharing(currentUser.getId(), false)
         if (!success) {

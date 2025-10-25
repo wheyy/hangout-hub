@@ -11,7 +11,7 @@ export class ParkingSpot implements Location {
   constructor(
     public name: string,
     public address: string,
-    public coordinates: [number, number], // CHANGED from GeolocationCoordinates
+    public coordinates: [longitude: number, latitude: number],
     public carparkCode: string,
     public rate: string,                 
     public totalCapacity: number,
@@ -28,8 +28,7 @@ export class ParkingSpot implements Location {
     return this.address;
   }
 
-  // CHANGED return type
-  getCoordinates(): [number, number] { 
+  getCoordinates(): [longitude: number, latitude: number]{
     return this.coordinates;
   }
 
@@ -57,7 +56,11 @@ export class ParkingSpot implements Location {
     return this.operatingHours;
   }
 
-  // === Update methods ===
+  getOccupied(): number {
+    return this.totalCapacity - this.currentAvailability;
+  }
+
+  // === Update methods (mirroring your Meetup style) ===
   updateName(newName: string): boolean {
     this.name = newName;
     return true;
@@ -68,8 +71,7 @@ export class ParkingSpot implements Location {
     return true;
   }
 
-  // CHANGED parameter type
-  updateCoordinates(newCoords: [number, number]): boolean {
+  updateCoordinates(newCoords: [longitude: number, latitude: number]): boolean {
     this.coordinates = newCoords;
     return true;
   }

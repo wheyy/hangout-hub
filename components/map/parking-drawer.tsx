@@ -7,13 +7,13 @@ import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
 import { ParkingSpotCard } from "./parking-spot-card";
 
 interface ParkingDrawerProps {
-  isOpen: boolean;
-  onToggle: () => void;
-  carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>;
-  onSelect?: (info: CarparkInfo, availability?: CarparkAvailability) => void;
-  onGetDirections?: (info: CarparkInfo) => void;
-  selectedCarpark?: { info: CarparkInfo; availability?: CarparkAvailability } | null;
-  onBack?: () => void;
+  isOpen: boolean
+  onToggle: () => void
+  carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>
+  onSelect?: (carpark: { info: CarparkInfo; availability?: CarparkAvailability }) => void
+  onGetDirections?: (carpark: { info: CarparkInfo; availability?: CarparkAvailability }) => void
+  selectedCarpark?: { info: CarparkInfo; availability?: CarparkAvailability } | null
+  onBack?: () => void
 }
 
 

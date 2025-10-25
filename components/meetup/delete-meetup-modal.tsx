@@ -13,19 +13,19 @@ interface DeleteMeetupModalProps {
   isOpen: boolean
   onClose: () => void
   meetup: Meetup | null
-  /** Called when the user confirms deletion */
+// Called when the user confirms deletion
 //   onDelete: (meetup: Meetup) => void
 }
 
-/**
- * A confirmation modal for ending & permanently deleting a meetup.
- * The action is irreversible. Users must type "DELETE" to proceed.
- */
+
+// A confirmation modal for ending & permanently deleting a meetup.
+// The action is irreversible. Users must type "DELETE" to proceed.
 export function DeleteMeetupModal({
   isOpen,
   onClose,
   meetup,
 }: DeleteMeetupModalProps) {
+  // DeleteMeetupModalController
   const [confirmText, setConfirmText] = useState("")
   const router = useRouter()
 
@@ -48,6 +48,7 @@ export function DeleteMeetupModal({
     }
   };
 
+  // DeleteMeetupModalView
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
