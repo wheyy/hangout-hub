@@ -294,34 +294,6 @@ export class Meetup {
         await this.save(); // Sync to Firestore
     }
 
-    // private static async addMeetupToFirestore(meetup: Meetup): Promise<boolean> {
-    //     try {
-    //         const docRef = await addDoc(collection(db, "meetup"), {
-    //             id: meetup.id,
-    //             title: meetup.title,
-    //             dateTime: meetup.dateTime.toISOString(),
-    //             destination: meetup.destination,
-    //             creatorId: meetup.creator.id,
-    //             memberIds: meetup.getMemberIds(),
-    //         });
-    //         console.log("Document written with ID: ", docRef.id);
-    //         return true;
-    //       } catch (e) {
-    //         console.error("Error adding document: ", e);
-    //         return false;
-    //       }
-    // }
-
-    // addMember(user: User): void {
-    //     if (!this.members.find(member => member.id === user.id)) {
-    //         this.members.push(user)
-    //     }
-    // }
-
-    // removeMember(user: User): void {
-    //     this.members = this.members.filter(member => member.id !== user.id)
-    // }
-
     start(): void {
         console.log(`Meetup ${this.title} has started.`)
     }
@@ -439,51 +411,18 @@ export class Meetup {
         return true
     }
 
-    // deleteMeetup(): boolean {
-    //     try {
-    //       console.log("Deleting meetup:", this.id);
-    //       for (const member of this.members) {
-    //         console.log("Removing meetup for member:", member.getId());
-    //         member.removeMeetup(this);
-    //       }
-    //       this.members = [];
-    //       console.log(`Meetup ${this.title} deleted.`);
-    //       return true;
-    //     } catch (error) {
-    //       console.error("Error while deleting meetup:", error);
-    //       return false;
-    //     }
-    //   }
-    
-
-    // deleteMeetup(): boolean {
-    //     try {
-    //       console.log("Deleting meetup:", this.id);
-    //       for (const member of this.members) {
-    //         console.log("Removing meetup for member:", member.getId());
-    //         member.removeMeetup(this);
-    //       }
-    //       this.members = [];
-    //       console.log(`Meetup ${this.title} deleted.`);
-    //       return true;
-    //     } catch (error) {
-    //       console.error("Error while deleting meetup:", error);
-    //       return false;
-    //     }
-    //   }
-
-  async endMeetup(): Promise<boolean> {
-    try {
-      const meetupRef = doc(db, "meetups", this.id)
-      await updateDoc(meetupRef, {
-        status: "ended",
-        endedAt: new Date(),
-      })
-      return true
-    } catch (error) {
-      console.error("Error ending meetup:", error)
-      return false
+    async endMeetup(): Promise<boolean> {
+        try {
+        const meetupRef = doc(db, "meetups", this.id)
+        await updateDoc(meetupRef, {
+            status: "ended",
+            endedAt: new Date(),
+        })
+        return true
+        } catch (error) {
+        console.error("Error ending meetup:", error)
+        return false
+        }
     }
-  }
     
 }

@@ -13,19 +13,6 @@ import { Meetup } from "@/lib/data/meetup"
 import { useUserStore } from "@/hooks/user-store"
 
 
-interface GroupMember {
-  id: string
-  name: string
-  avatar?: string
-  location?: {
-    lat: number
-    lng: number
-    timestamp: number
-  }
-  isSharing: boolean
-  status: "online" | "offline" | "arrived"
-}
-
 interface GroupManagementProps {
   cur_meetup: Meetup
   isCreator: boolean
@@ -41,7 +28,7 @@ export function GroupManagement({
   onInvite,
   onDelete,
 }: GroupManagementProps) {
-  const [inviteEmail, setInviteEmail] = useState("")
+  // GroupManagementController
   const [meetup, setMeetup] = useState<Meetup>(cur_meetup)
   const [hoveredMember, setHoveredMember] = useState<string | null>(null)
   const groupMembers = meetup.getMembers()
@@ -52,12 +39,6 @@ export function GroupManagement({
     date: "",
     time: "",
   })
-
-
-  // const handleGenerateLink = () => {
-  //   // Generate invite link logic
-  //   console.log("Generating invite link for:", inviteEmail)
-  // }
 
   const onEdit = () => {
     setEditData({
@@ -95,6 +76,7 @@ export function GroupManagement({
     })
   }
 
+  // GroupManagementView
   return (
     <div className="space-y-4">
       {/* Meetup Details */}
