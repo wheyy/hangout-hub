@@ -44,12 +44,9 @@ export default function MeetupsPage() {
     [meetups]
   )
   
-  // ✅ Recalculate pastMeetups - supports both "past" and "completed" status
+  // ✅ Recalculate pastMeetup
   const pastMeetups = useMemo(() => 
-    meetups.filter((meetup) => {
-      const status = meetup.getStatus()
-      return status === "past" || status === "completed"
-    }),
+    () => meetups.filter((meetup) => meetup.getStatus() === "past"),
     [meetups]
   )
 
