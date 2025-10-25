@@ -16,19 +16,34 @@ import {
 import { useUserStore } from "../../hooks/user-store";
 import { use } from "react";
 
-// Feel free to update this class, I did not vet the behaviours
+export interface MemberStatus {
+    userId: string
+    status: "traveling" | "arrived"
+    locationSharingEnabled: boolean
+    arrivedAt: string | null
+    joinedAt: string
+}
+
 export class Meetup {
     private members: User[] = []
+    private memberStatuses: Map<string, MemberStatus> = new Map()
     
     
     constructor(
         public id: string,
         public title: string,
-        public dateTime: Date, 
-        public destination: string, // TODO update to destination ID
+        public dateTime: Date,
+        public destination: HangoutSpot,
         public creator: User
     ) {
         this.members.push(creator)
+        this.memberStatuses.set(creator.id, {
+            userId: creator.id,
+            status: "traveling",
+            locationSharingEnabled: true,
+            arrivedAt: null,
+            joinedAt: new Date().toISOString()
+        })
         creator.addMeetup(this)
         console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
@@ -37,13 +52,13 @@ export class Meetup {
     static async create(
         title: string,
         dateTime: Date,
-        destination: string,
+        destination: HangoutSpot,
         creator: User
     ): Promise<Meetup> {
         try {
             // Generate a new document reference (with auto-generated ID)
             const meetupRef = doc(collection(db, "meetups"));
-            
+
             // Create the Meetup object with Firebase ID
             const meetup = new Meetup(
                 meetupRef.id,
@@ -53,15 +68,37 @@ export class Meetup {
                 creator
             );
 
-            // Save to Firestore
+            // Save to Firestore with destination as object
+            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
+            meetup.memberStatuses.forEach((status, userId) => {
+                memberStatusesObj[userId] = {
+                    status: status.status,
+                    locationSharingEnabled: status.locationSharingEnabled,
+                    arrivedAt: status.arrivedAt,
+                    joinedAt: status.joinedAt
+                }
+            })
+
             await setDoc(meetupRef, {
                 title: meetup.title,
                 dateTime: meetup.dateTime,
-                destination: meetup.destination,
+                destination: {
+                    id: meetup.destination.id,
+                    name: meetup.destination.name,
+                    category: meetup.destination.category,
+                    priceRange: meetup.destination.priceRange,
+                    rating: meetup.destination.rating,
+                    reviewCount: meetup.destination.reviewCount,
+                    coordinates: meetup.destination.coordinates,
+                    address: meetup.destination.address,
+                    thumbnailUrl: meetup.destination.thumbnailUrl,
+                    openingHours: meetup.destination.openingHours,
+                },
                 creatorId: meetup.creator.id,
                 memberIds: meetup.getMemberIds(),
+                members: memberStatusesObj,
             });
-            
+
             console.log("Meetup created with ID:", meetupRef.id);
             return meetup;
         } catch (e) {
@@ -112,21 +149,49 @@ export class Meetup {
                 console.error(`❌ Creator ${data.creatorId} not found`);
                 throw new Error("Creator not found");
             }
+
+            // Parse destination as HangoutSpot
+            const destinationData = data.destination
+            const destination = new HangoutSpot(
+                destinationData.id,
+                destinationData.name,
+                destinationData.category,
+                destinationData.priceRange,
+                destinationData.rating,
+                destinationData.reviewCount,
+                destinationData.coordinates,
+                destinationData.address,
+                destinationData.thumbnailUrl,
+                destinationData.openingHours
+            )
+
             const meetup = new Meetup(
                 meetupDoc.id,
                 data.title,
                 dateTime,
-                data.destination,
+                destination,
                 creator!
             );
             
+            // Load member statuses
+            if (data.members) {
+                Object.entries(data.members).forEach(([userId, statusData]: [string, any]) => {
+                    meetup.memberStatuses.set(userId, {
+                        userId,
+                        status: statusData.status || "traveling",
+                        locationSharingEnabled: statusData.locationSharingEnabled ?? true,
+                        arrivedAt: statusData.arrivedAt || null,
+                        joinedAt: statusData.joinedAt
+                    })
+                })
+            }
             
-            // TO BE IMPLEMENTED: Fetch users from user db
+            // Fetch users from user db
             data.memberIds.forEach(async (memberId: string) => {
                 if (memberId !== meetup.creator.id) {
                     const member = await User.loadFromFirestore(memberId);
                     if (member) {
-                        meetup.addMember(member);
+                        meetup.addMemberWithoutStatus(member);
                     }
                 }
             });
@@ -141,11 +206,33 @@ export class Meetup {
     // ✅ Update meetup in Firestore
     async save(): Promise<boolean> {
         try {
+            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
+            this.memberStatuses.forEach((status, userId) => {
+                memberStatusesObj[userId] = {
+                    status: status.status,
+                    locationSharingEnabled: status.locationSharingEnabled,
+                    arrivedAt: status.arrivedAt,
+                    joinedAt: status.joinedAt
+                }
+            })
+
             await updateDoc(doc(db, "meetups", this.id), {
                 title: this.title,
                 dateTime: this.dateTime.toISOString(),
-                destination: this.destination,
+                destination: {
+                    id: this.destination.id,
+                    name: this.destination.name,
+                    category: this.destination.category,
+                    priceRange: this.destination.priceRange,
+                    rating: this.destination.rating,
+                    reviewCount: this.destination.reviewCount,
+                    coordinates: this.destination.coordinates,
+                    address: this.destination.address,
+                    thumbnailUrl: this.destination.thumbnailUrl,
+                    openingHours: this.destination.openingHours,
+                },
                 memberIds: this.getMemberIds(),
+                members: memberStatusesObj,
                 updatedAt: new Date().toISOString()
             });
             return true;
@@ -182,43 +269,30 @@ export class Meetup {
     async addMember(user: User): Promise<void> {
         if (!this.members.find(member => member.id === user.id)) {
             this.members.push(user);
+            this.memberStatuses.set(user.id, {
+                userId: user.id,
+                status: "traveling",
+                locationSharingEnabled: true,
+                arrivedAt: null,
+                joinedAt: new Date().toISOString()
+            })
             await this.save(); // Sync to Firestore
+        }
+    }
+
+    // Add member without updating status (used when loading from Firebase)
+    addMemberWithoutStatus(user: User): void {
+        if (!this.members.find(member => member.id === user.id)) {
+            this.members.push(user);
         }
     }
 
     // ✅ Remove member and update Firestore
     async removeMember(user: User): Promise<void> {
         this.members = this.members.filter(member => member.id !== user.id);
+        user.removeMeetup(this);
         await this.save(); // Sync to Firestore
     }
-
-    // private static async addMeetupToFirestore(meetup: Meetup): Promise<boolean> {
-    //     try {
-    //         const docRef = await addDoc(collection(db, "meetup"), {
-    //             id: meetup.id,
-    //             title: meetup.title,
-    //             dateTime: meetup.dateTime.toISOString(),
-    //             destination: meetup.destination,
-    //             creatorId: meetup.creator.id,
-    //             memberIds: meetup.getMemberIds(),
-    //         });
-    //         console.log("Document written with ID: ", docRef.id);
-    //         return true;
-    //       } catch (e) {
-    //         console.error("Error adding document: ", e);
-    //         return false;
-    //       }
-    // }
-
-    // addMember(user: User): void {
-    //     if (!this.members.find(member => member.id === user.id)) {
-    //         this.members.push(user)
-    //     }
-    // }
-
-    // removeMember(user: User): void {
-    //     this.members = this.members.filter(member => member.id !== user.id)
-    // }
 
     start(): void {
         console.log(`Meetup ${this.title} has started.`)
@@ -252,21 +326,63 @@ export class Meetup {
         return this.dateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
 
-    tempGetDestination(): string {
+    getDestination(): HangoutSpot {
         return this.destination
     }
 
-    getStatus(): "active" | "completed" {
+    getStatus(): "active" | "past" {
         const now = new Date()
-        return now < this.dateTime ? "active" : "completed"
+        return now < this.dateTime ? "active" : "past"
     }
 
     getMemberIds(): string[] {
         return this.members.map(member => member.id)
     }
 
-    updateDetails(newTitle: string, newDateTime: Date, newDestination: string): boolean {
-        if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.tempUpdateDestination(newDestination)) {
+    getMemberStatus(userId: string): MemberStatus | undefined {
+        return this.memberStatuses.get(userId)
+    }
+
+    getAllMemberStatuses(): Map<string, MemberStatus> {
+        return new Map(this.memberStatuses)
+    }
+
+    async updateMemberStatus(userId: string, status: "traveling" | "arrived"): Promise<boolean> {
+        const memberStatus = this.memberStatuses.get(userId)
+        if (memberStatus) {
+            memberStatus.status = status
+            if (status === "arrived") {
+                memberStatus.arrivedAt = new Date().toISOString()
+                memberStatus.locationSharingEnabled = false
+            } else {
+                memberStatus.arrivedAt = null
+            }
+            this.memberStatuses.set(userId, memberStatus)
+            return await this.save()
+        }
+        return false
+    }
+
+    async updateLocationSharing(userId: string, enabled: boolean): Promise<boolean> {
+        const memberStatus = this.memberStatuses.get(userId)
+        if (memberStatus) {
+            memberStatus.locationSharingEnabled = enabled
+            this.memberStatuses.set(userId, memberStatus)
+            return await this.save()
+        }
+        return false
+    }
+
+    allMembersArrived(): boolean {
+        return Array.from(this.memberStatuses.values()).every(status => status.status === "arrived")
+    }
+
+    getArrivedMemberCount(): number {
+        return Array.from(this.memberStatuses.values()).filter(status => status.status === "arrived").length
+    }
+
+    updateDetails(newTitle: string, newDateTime: Date, newDestination: HangoutSpot): boolean {
+        if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.updateDestination(newDestination)) {
             this.save();
             return true
         }
@@ -285,12 +401,7 @@ export class Meetup {
         return false
     }
 
-    // updateDestination(newHangoutSpot: HangoutSpot): boolean {
-    //     this.destination = newHangoutSpot
-    //     return true
-    // }
-
-    tempUpdateDestination(newDestination: string): boolean {
+    updateDestination(newDestination: HangoutSpot): boolean {
         this.destination = newDestination
         return true
     }
@@ -300,37 +411,18 @@ export class Meetup {
         return true
     }
 
-    // deleteMeetup(): boolean {
-    //     try {
-    //       console.log("Deleting meetup:", this.id);
-    //       for (const member of this.members) {
-    //         console.log("Removing meetup for member:", member.getId());
-    //         member.removeMeetup(this);
-    //       }
-    //       this.members = [];
-    //       console.log(`Meetup ${this.title} deleted.`);
-    //       return true;
-    //     } catch (error) {
-    //       console.error("Error while deleting meetup:", error);
-    //       return false;
-    //     }
-    //   }
-    
-
-    // deleteMeetup(): boolean {
-    //     try {
-    //       console.log("Deleting meetup:", this.id);
-    //       for (const member of this.members) {
-    //         console.log("Removing meetup for member:", member.getId());
-    //         member.removeMeetup(this);
-    //       }
-    //       this.members = [];
-    //       console.log(`Meetup ${this.title} deleted.`);
-    //       return true;
-    //     } catch (error) {
-    //       console.error("Error while deleting meetup:", error);
-    //       return false;
-    //     }
-    //   }
+    async endMeetup(): Promise<boolean> {
+        try {
+        const meetupRef = doc(db, "meetups", this.id)
+        await updateDoc(meetupRef, {
+            status: "ended",
+            endedAt: new Date(),
+        })
+        return true
+        } catch (error) {
+        console.error("Error ending meetup:", error)
+        return false
+        }
+    }
     
 }

@@ -5,223 +5,211 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX } from "lucide-react"
+import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX, Edit, Save, X } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Input } from "./ui/input"
+import { User } from "@/lib/data/user"
+import { Meetup } from "@/lib/data/meetup"
+import { useUserStore } from "@/hooks/user-store"
 
-
-interface GroupMember {
-  id: string
-  name: string
-  avatar?: string
-  location?: {
-    lat: number
-    lng: number
-    timestamp: number
-  }
-  isSharing: boolean
-  status: "online" | "offline" | "arrived"
-}
 
 interface GroupManagementProps {
-  meetupId: string
-  isActive: boolean
-  onLocationShare: (enabled: boolean) => void
+  cur_meetup: Meetup
+  isCreator: boolean
+  canInvite: boolean
+  onInvite: () => void
+  onDelete: () => void
 }
 
-export function GroupManagement({ meetupId, isActive, onLocationShare }: GroupManagementProps) {
-  const [isSharing, setIsSharing] = useState(false)
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null)
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
-  const [inviteEmail, setInviteEmail] = useState("")
+export function GroupManagement({
+  cur_meetup,
+  isCreator,
+  canInvite,
+  onInvite,
+  onDelete,
+}: GroupManagementProps) {
+  // GroupManagementController
+  const [meetup, setMeetup] = useState<Meetup>(cur_meetup)
   const [hoveredMember, setHoveredMember] = useState<string | null>(null)
+  const groupMembers = meetup.getMembers()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    title: "",
+    destination: "",
+    date: "",
+    time: "",
+  })
 
-  const handleGenerateLink = () => {
-    // Generate invite link logic
-    console.log("Generating invite link for:", inviteEmail)
+  const onEdit = () => {
+    setEditData({
+      title: meetup.title,
+      destination: meetup.destination.name,
+      date: meetup.dateTime.toISOString().split("T")[0], // "YYYY-MM-DD"
+      time: meetup.dateTime.toTimeString().split(" ")[0].slice(0, 5), // "HH:mm"
+    })
+    setIsEditing(true)
   }
 
-  const handleKickUser = (memberId: string, memberName: string) => {
-    console.log(`Kicking user ${memberName} (${memberId}) from meetup`)
+  const onSaveEdit = () => {
+    const [year, month, day] = editData.date.split("-").map(Number)
+    const [hour, minute] = editData.time.split(":").map(Number)
+
+    // Note: Destination editing disabled for now - would need autocomplete implementation
+    meetup.updateTitle(editData.title)
+    meetup.updateDateTime(new Date(year, month - 1, day, hour, minute))
+    meetup.save()
+    setMeetup(meetup)
+    setIsEditing(false)
+  }
+
+  const onCancelEdit = () => {
+    setIsEditing(false)
+    setEditData({ title: "", destination: "", date: "", time: "" })
+  }
+
+  const handleKickUser = (member: User) => {
+    console.log(`Kicking user ${member.getUsername()} (${member.getId}) from meetup`)
     // Here you would implement the actual kick logic
     // For now, just showing the action in console
+    meetup.removeMember(member).then(() => {
+      console.log(`User ${member.getUsername()} has been kicked from the meetup.`)
+    })
   }
 
-  const [groupMembers] = useState<GroupMember[]>([
-    {
-      id: "1",
-      name: "Alex Chen",
-      isSharing: true,
-      location: { lat: 1.2966, lng: 103.8547, timestamp: Date.now() },
-      status: "online",
-    },
-    {
-      id: "2",
-      name: "Sarah Kim",
-      isSharing: true,
-      location: { lat: 1.2976, lng: 103.8557, timestamp: Date.now() - 30000 },
-      status: "online",
-    },
-    {
-      id: "3",
-      name: "Mike Johnson",
-      isSharing: false,
-      status: "offline",
-    },
-  ])
-
-  const requestLocationPermission = async () => {
-    try {
-      const permission = await navigator.permissions.query({ name: "geolocation" })
-      setHasPermission(permission.state === "granted")
-
-      if (permission.state === "prompt") {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            setHasPermission(true)
-            setCurrentLocation({
-              lat: position.coords.latitude,
-              lng: position.coords.longitude,
-            })
-          },
-          () => setHasPermission(false),
-        )
-      }
-    } catch (error) {
-      setHasPermission(false)
-    }
-  }
-
-  const startLocationSharing = async () => {
-    if (!hasPermission) {
-      await requestLocationPermission()
-      return
-    }
-
-    setIsSharing(true)
-    onLocationShare(true)
-
-    const interval = setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          })
-          setLastUpdate(new Date())
-        },
-        (error) => {
-          console.error("Location error:", error)
-        },
-      )
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }
-
-  const stopLocationSharing = () => {
-    setIsSharing(false)
-    onLocationShare(false)
-    setCurrentLocation(null)
-    setLastUpdate(null)
-  }
-
-  useEffect(() => {
-    requestLocationPermission()
-  }, [])
-
-  if (!isActive) {
-    return (
-      <Card>
-        <CardContent className="p-6 text-center">
-          <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Location Sharing Inactive</h3>
-          <p className="text-gray-600">Join an active meetup to start sharing your location with the group.</p>
-        </CardContent>
-      </Card>
-    )
-  }
-
+  // GroupManagementView
   return (
     <div className="space-y-4">
-      {/* Location Sharing Control */}
+      {/* Meetup Details */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            Location Sharing
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MapPin className="w-5 h-5" />
+              Meetup Details
+            </div>
+            {isCreator && !isEditing && onEdit && (
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Edit className="w-4 h-4 mr-1" />
+                Edit
+              </Button>
+            )}
+            {isCreator && isEditing && (
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={onCancelEdit}>
+                  <X className="w-4 h-4" />
+                </Button>
+                <Button size="sm" onClick={onSaveEdit} className="bg-blue-600 text-white hover:bg-blue-700">
+                  <Save className="w-4 h-4 mr-1" />
+                  Save
+                </Button>
+              </div>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {hasPermission === false && (
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-yellow-600" />
-              <span className="text-sm text-yellow-800">
-                Location permission required to share your location with the group.
-              </span>
+        <CardContent>
+          {isEditing && editData && setEditData ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Meetup Name</label>
+                <Input
+                  value={editData.title}
+                  onChange={(e) => setEditData({ ...editData, title: e.target.value })}
+                  placeholder="Enter meetup name"
+                  className="text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Destination</label>
+                <Input
+                  value={editData.destination}
+                  onChange={(e) => setEditData({ ...editData, destination: e.target.value })}
+                  placeholder="Enter destination"
+                  className="text-sm"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">Destination editing is currently disabled</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Date</label>
+                  <Input
+                    type="date"
+                    value={editData.date}
+                    onChange={(e) => setEditData({ ...editData, date: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Time</label>
+                  <Input
+                    type="time"
+                    value={editData.time}
+                    onChange={(e) => setEditData({ ...editData, time: e.target.value })}
+                    className="text-sm"
+                  />
+                </div>
+              </div>
             </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-gray-900">Share My Location</h4>
-              <p className="text-sm text-gray-600">Let group members see your real-time location during this meetup.</p>
-            </div>
-            <Switch
-              checked={isSharing}
-              onCheckedChange={isSharing ? stopLocationSharing : startLocationSharing}
-              disabled={hasPermission === false}
-            />
-          </div>
-
-          {isSharing && currentLocation && (
-            <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <CheckCircle className="w-4 h-4 text-green-600" />
-              <div className="flex-1">
-                <span className="text-sm text-green-800 font-medium">Location sharing active</span>
-                {lastUpdate && (
-                  <div className="flex items-center gap-1 text-xs text-green-700">
-                    <Clock className="w-3 h-3" />
-                    <span>Last updated: {lastUpdate.toLocaleTimeString()}</span>
-                  </div>
-                )}
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Title</label>
+                <p className="text-sm text-gray-900 font-medium">{meetup.title}</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Destination</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <MapPin className="w-4 h-4" />
+                  <span className="text-sm">{meetup.destination.name}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Date & Time</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-sm">{meetup.getDateString()} at {meetup.getTimeString()}</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Members</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm">{meetup.getMemberCount()} / 10 members</span>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Arrived</label>
+                <div className="flex items-center gap-2 text-gray-900">
+                  <CheckCircle className="w-4 h-4" />
+                  <span className="text-sm">{meetup.getArrivedMemberCount()} members arrived</span>
+                </div>
               </div>
             </div>
           )}
-
-          <div className="text-xs text-gray-500 space-y-1">
-            <p>• Your location is only shared during active meetup sessions</p>
-            <p>• Location updates automatically every 5 seconds</p>
-            <p>• You can stop sharing at any time</p>
-            <p>• Sharing ends when you arrive at the destination</p>
-          </div>
         </CardContent>
       </Card>
 
-      {/* Send Invite Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Mail className="w-5 h-5" />
-            Send Invite
-          </CardTitle>
-          <p className="text-sm text-gray-600">Invite your friends to this meetup :)</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter email address"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={handleGenerateLink} className="bg-gray-900 hover:bg-gray-800 text-white">
-              Invite
+      {/* Send Invite Section - Only for creator if can invite */}
+      {isCreator && canInvite && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Mail className="w-5 h-5" />
+              Invite Members
+            </CardTitle>
+            <p className="text-sm text-gray-600">Add more friends to this meetup</p>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={onInvite}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Send Invite
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Group Members Status */}
       <Card>
@@ -233,7 +221,7 @@ export function GroupManagement({ meetupId, isActive, onLocationShare }: GroupMa
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {groupMembers.map((member) => (
+            {groupMembers.map((member: User) => (
               <div
                 key={member.id}
                 className="relative flex items-center justify-between p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100"
@@ -252,7 +240,7 @@ export function GroupManagement({ meetupId, isActive, onLocationShare }: GroupMa
                   <div>
                     <h4 className="font-medium text-gray-900">{member.name}</h4>
                     <div className="flex items-center gap-2">
-                      <Badge
+                      {/* <Badge
                         variant={member.status === "online" ? "default" : "secondary"}
                         className={`text-xs ${
                           member.status === "online"
@@ -263,29 +251,29 @@ export function GroupManagement({ meetupId, isActive, onLocationShare }: GroupMa
                         }`}
                       >
                         {member.status === "online" ? "Online" : member.status === "arrived" ? "Arrived" : "Offline"}
-                      </Badge>
-                      {member.isSharing && (
+                      </Badge> */}
+                      {/* {member.isSharing && (
                         <div className="flex items-center gap-1 text-xs text-gray-600">
                           <MapPin className="w-3 h-3" />
                           <span>Sharing location</span>
                         </div>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {member.location && (
+                  {/* {member.location && (
                     <div className="text-xs text-gray-500">
                       <div>Updated {Math.floor((Date.now() - member.location.timestamp) / 1000)}s ago</div>
                     </div>
-                  )}
+                  )} */}
 
-                  {hoveredMember === member.id && (
+                  {(hoveredMember != meetup.creator.getId()) && (isCreator) && (hoveredMember === member.id) && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleKickUser(member.id, member.name)}
+                      onClick={() => handleKickUser(member)}
                       className="ml-2 h-8 px-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
                     >
                       <UserX className="w-4 h-4" />
@@ -297,34 +285,33 @@ export function GroupManagement({ meetupId, isActive, onLocationShare }: GroupMa
             ))}
           </div>
 
-          <Button variant="outline" className="w-full mt-4 bg-transparent">
-            <Navigation className="w-4 h-4 mr-2" />
-            View All on Map
-          </Button>
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
+      {/* End/Leave Meetup Actions */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Quick Actions</CardTitle>
+          <CardTitle className="text-base">Meetup Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Button variant="outline" className="w-full justify-start bg-transparent">
-            <MapPin className="w-4 h-4 mr-2" />
-            Share Current Location
-          </Button>
-          <Button variant="outline" className="w-full justify-start bg-transparent">
-            <Navigation className="w-4 h-4 mr-2" />
-            Get Directions to Meetup
-          </Button>
-          <Button
-            variant="outline"
-            className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
-          >
-            <AlertCircle className="w-4 h-4 mr-2" />
-            Leave Meetup
-          </Button>
+          {isCreator ? (
+            <Button
+              onClick={onDelete}
+              variant="outline"
+              className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
+            >
+              <AlertCircle className="w-4 h-4 mr-2" />
+              End Meetup
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
+            >
+              <UserX className="w-4 h-4 mr-2" />
+              Leave Meetup
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>

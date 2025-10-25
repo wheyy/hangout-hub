@@ -293,12 +293,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { MapPin, Users, User, Eye, EyeOff, Check, X } from "lucide-react"
+import { User, Eye, EyeOff, Check, X } from "lucide-react"
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { authService } from "@/lib/auth"
 import { AuthGuard } from "@/components/auth-guard"
 import { useRouter } from "next/navigation"
+import { AppHeader } from "@/components/app-header"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -434,16 +434,6 @@ export default function ProfilePage() {
     }
   }
 
-  const handleSignOut = async () => {
-    try {
-      await authService.signOut()
-      router.push("/auth/login")
-    } catch (e) {
-      setMessage("Failed to sign out. Please try again.")
-      setMessageType("error")
-    }
-  }
-
   const handleDeleteAccount = async () => {
     setDeleting(true)
     setMessage("")
@@ -471,55 +461,7 @@ export default function ProfilePage() {
   return (
     <AuthGuard>
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <MapPin className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-semibold text-gray-900">Hangout Hub</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href="/app">
-            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-              <MapPin className="w-4 h-4 mr-1" />
-              Map
-            </Button>
-          </Link>
-          <Link href="/meetups">
-            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-              <Users className="w-4 h-4 mr-1" />
-              Meetups
-            </Button>
-          </Link>
-          <Button variant="ghost" size="sm" className="text-blue-600 bg-blue-50">
-            <User className="w-4 h-4 mr-1" />
-            Profile
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            Sign out
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">Delete account</Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete account?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete your account and associated data. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
-                  {deleting ? "Deleting..." : "Delete"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      </header>
+      <AppHeader currentPage="profile" isAuthenticated={true} />
 
       {/* Main Content */}
       <div className="max-w-2xl mx-auto p-6">
@@ -695,9 +637,30 @@ export default function ProfilePage() {
                   </Button>
                 </>
               ) : (
-                <Button onClick={handleEdit} className="bg-blue-600 hover:bg-blue-700">
-                  Edit
-                </Button>
+                <>
+                  <Button onClick={handleEdit} className="bg-blue-600 hover:bg-blue-700">
+                    Edit
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">Delete Account</Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete your account and associated data. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
+                          {deleting ? "Deleting..." : "Delete"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               )}
             </div>
           </CardContent>

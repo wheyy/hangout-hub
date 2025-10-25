@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react"
 import { MapProviderComponent, useMap } from "@/lib/map/map-provider"
-import { Navbar } from "@/components/navbar"
 import { MapSearchBar } from "@/components/map/map-search-bar"
 import { HangoutDrawer } from "@/components/map/hangout-drawer"
 import { ParkingDrawer } from "@/components/map/parking-drawer"
@@ -12,6 +11,9 @@ import { ErrorPopup } from "@/components/map/error-popup"
 import { HangoutSpot } from "@/lib/data/hangoutspot"
 import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-places"
 import { getDirections, DirectionsRoute, formatDistance, formatDuration } from "@/lib/services/osrm-directions"
+import { AppHeader } from "@/components/app-header"
+import { authService } from "@/lib/auth"
+import { CreateMeetupModalWithDestination } from "@/components/meetup/create-meetup-modal-with-destination"
 
 // Cache for Singapore boundary data
 let singaporeBoundaryCache: any = null
@@ -73,7 +75,11 @@ function isPointInSingapore(lat: number, lng: number, boundaryData: any): boolea
   return false
 }
 
-export function MapInterface() {
+interface MapInterfaceProps {
+  onOpenCreateMeetup: (hangout: HangoutSpot) => void
+}
+
+function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
   const { map, isLoaded } = useMap()
   const [spots, setSpots] = useState<HangoutSpot[]>([])
   const [loading, setLoading] = useState(false)
@@ -143,6 +149,11 @@ export function MapInterface() {
       )
     })
   }, [selectedCarpark, carparks, map])
+
+  useEffect(() => {
+    if (!map) return
+    map.updateSearchPinLoading(loading)
+  }, [loading, map])
 
   const performAreaSearch = async (lng: number, lat: number) => {
     if (!map) return
@@ -788,6 +799,7 @@ export function MapInterface() {
         onCardClick={handleCardClick}
         onBack={handleBack}
         onGetDirections={handleGetDirections}
+        onOpenCreateMeetup={onOpenCreateMeetup}
       />
       <ParkingDrawer
         isOpen={parkingDrawerOpen}
@@ -805,6 +817,7 @@ export function MapInterface() {
         onSpotClick={handleCardClick}
         onSpotBack={handleBack}
         onSpotGetDirections={handleGetDirections}
+        onOpenCreateMeetup={onOpenCreateMeetup}
         carparks={carparks}
         selectedCarpark={selectedCarpark}
         onCarparkSelect={handleCarparkSelect}
@@ -823,19 +836,44 @@ export function MapInterface() {
 }
 
 export default function HomePage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isCreateMeetupModalOpen, setIsCreateMeetupModalOpen] = useState(false)
+  const [selectedHangoutForMeetup, setSelectedHangoutForMeetup] = useState<HangoutSpot | null>(null)
+
   const mapOptions = {
     center: [103.8198, 1.3521] as [number, number],
     zoom: 12,
   }
 
+  useEffect(() => {
+    authService.getCurrentUser().then((user) => {
+      setIsAuthenticated(!!user)
+    })
+  }, [])
+
+  const handleOpenCreateMeetup = (hangout: HangoutSpot) => {
+    setSelectedHangoutForMeetup(hangout)
+    setIsCreateMeetupModalOpen(true)
+  }
+
+  const handleCloseCreateMeetup = () => {
+    setIsCreateMeetupModalOpen(false)
+    setSelectedHangoutForMeetup(null)
+  }
+
   return (
     <div className="h-screen w-full overflow-hidden flex flex-col">
-      <Navbar />
+      <AppHeader currentPage="map" isAuthenticated={isAuthenticated} />
       <div className="flex-1 relative">
         <MapProviderComponent options={mapOptions} className="absolute inset-0">
-          <MapInterface />
+          <MapInterface onOpenCreateMeetup={handleOpenCreateMeetup} />
         </MapProviderComponent>
       </div>
+      <CreateMeetupModalWithDestination
+        isOpen={isCreateMeetupModalOpen}
+        onClose={handleCloseCreateMeetup}
+        hangoutSpot={selectedHangoutForMeetup}
+      />
     </div>
   )
 }

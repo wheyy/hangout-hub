@@ -2,9 +2,9 @@
 import { Location } from './location'; // Assuming you have a Location interface
 
 export enum ParkingType {
-    MSCP = "MSCP",
-    StreetParking = "Street",
-    OutdoorParking = "Outdoor"
+    MSCP,
+    StreetParking,
+    OutdoorParking
 }
 
 export class ParkingSpot implements Location {
@@ -19,11 +19,6 @@ export class ParkingSpot implements Location {
     public parkingType: ParkingType,
     public operatingHours: string
   ) {}
-
-
-  isAvailable(): boolean {
-    return this.currentAvailability > 0;
-  }
 
   getName(): string {
     return this.name;
@@ -111,40 +106,3 @@ export class ParkingSpot implements Location {
     return true;
   }
 }
-
-// Mock data for Singapore parking spots
-export const mockParkingSpots: ParkingSpot[] = [
-    new ParkingSpot(
-        "Marina Bay Sands Carpark",
-        "10 Bayfront Ave, Singapore 018956",
-        [1.2834, 103.8591],
-        "MBS001",
-        "$2.00/hr",
-        2000,
-        1500,
-        ParkingType.MSCP,
-        "24 hours"
-    ),
-    new ParkingSpot(
-        "Orchard Road Street Parking",
-        "Orchard Rd, Singapore",
-        [1.3048, 103.8318],
-        "ORC123",
-        "$3.00/hr",
-        100,
-        20,
-        ParkingType.StreetParking,
-        "Mon-Sat: 8am-10pm"
-    ),
-    new ParkingSpot(
-        "East Coast Park Outdoor Parking",
-        "East Coast Park Service Rd, Singapore",
-        [1.3039, 103.9136],
-        "ECP456",
-        "$1.50/hr",
-        500,
-        300,
-        ParkingType.OutdoorParking,
-        "24 hours"
-    ),
-];

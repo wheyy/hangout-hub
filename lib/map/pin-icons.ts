@@ -1,39 +1,99 @@
-export function createSearchPinElement(): HTMLElement {
+export function createSearchPinElement(isLoading: boolean = false): HTMLElement {
   const container = document.createElement("div")
   container.style.width = "64px"
   container.style.height = "74px"
   container.style.cursor = "grab"
   container.style.zIndex = "100"
-  
-  const svg = `
-    <svg width="64" height="74" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <filter id="search-shadow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-          <feOffset dx="0" dy="3" result="offsetblur"/>
-          <feComponentTransfer>
-            <feFuncA type="linear" slope="0.4"/>
-          </feComponentTransfer>
-          <feMerge>
-            <feMergeNode/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-      
-      <g filter="url(#search-shadow)">
-        <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z" 
-              fill="#3B82F6" stroke="white" stroke-width="3"/>
-        
-        <g transform="translate(32, 20)">
-          <circle cx="0" cy="-2" r="7" stroke="white" stroke-width="2.5" fill="none"/>
-          <line x1="5" y1="2.5" x2="8" y2="5.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
-        </g>
-      </g>
-    </svg>
-  `
+  container.style.position = "relative"
+  container.className = "search-pin"
 
-  container.innerHTML = svg
+  if (isLoading) {
+    // Loading state: blue pin with spinner
+    const svg = `
+      <svg width="64" height="74" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="search-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="3" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.4"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <g filter="url(#search-shadow)">
+          <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z"
+                fill="#3B82F6" stroke="white" stroke-width="3"/>
+        </g>
+      </svg>
+    `
+    container.innerHTML = svg
+
+    // Add CSS spinner in the center
+    const spinner = document.createElement("div")
+    spinner.className = "pin-spinner"
+    spinner.style.position = "absolute"
+    spinner.style.top = "14px"
+    spinner.style.left = "50%"
+    spinner.style.transform = "translateX(-50%)"
+    spinner.style.width = "18px"
+    spinner.style.height = "18px"
+    spinner.style.border = "2.5px solid white"
+    spinner.style.borderTopColor = "transparent"
+    spinner.style.borderRadius = "50%"
+    spinner.style.animation = "spin 1s linear infinite"
+    spinner.style.pointerEvents = "none"
+
+    // Add keyframes if not already added
+    if (!document.querySelector('#spin-keyframes')) {
+      const style = document.createElement('style')
+      style.id = 'spin-keyframes'
+      style.textContent = `
+        @keyframes spin {
+          0% { transform: translateX(-50%) rotate(0deg); }
+          100% { transform: translateX(-50%) rotate(360deg); }
+        }
+      `
+      document.head.appendChild(style)
+    }
+
+    container.appendChild(spinner)
+  } else {
+    // Normal state: blue pin with search icon
+    const svg = `
+      <svg width="64" height="74" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="search-shadow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+            <feOffset dx="0" dy="3" result="offsetblur"/>
+            <feComponentTransfer>
+              <feFuncA type="linear" slope="0.4"/>
+            </feComponentTransfer>
+            <feMerge>
+              <feMergeNode/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <g filter="url(#search-shadow)">
+          <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z"
+                fill="#3B82F6" stroke="white" stroke-width="3"/>
+
+          <g transform="translate(32, 20)" class="pin-icon">
+            <circle cx="0" cy="-2" r="7" stroke="white" stroke-width="2.5" fill="none"/>
+            <line x1="5" y1="2.5" x2="8" y2="5.5" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+          </g>
+        </g>
+      </svg>
+    `
+    container.innerHTML = svg
+  }
+
   return container
 }
 
@@ -48,16 +108,31 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
   circle.style.width = "24px"
   circle.style.height = "24px"
   circle.style.borderRadius = "50%"
-  const unselectedColor = baseColor || "#EF4444"
-  // Ensure the color is applied with !important to prevent overrides
-  const finalColor = isSelected ? "#F97316" : unselectedColor
+  const finalColor = baseColor || "#EF4444"
   circle.style.backgroundColor = finalColor
   circle.style.setProperty("background-color", finalColor, "important")
   circle.style.border = isSelected ? "3px solid white" : "2px solid white"
   circle.style.boxShadow = isSelected 
-    ? "0 0 0 2px #F97316, 0 4px 8px rgba(0,0,0,0.3)" 
+    ? `0 0 0 2px ${finalColor}, 0 4px 8px rgba(0,0,0,0.3)` 
     : "0 2px 4px rgba(0,0,0,0.3)"
   circle.style.transition = "all 0.2s ease"
+  
+  // Add pulsating animation for selected markers
+  if (isSelected) {
+    circle.style.animation = "pulse 2s ease-in-out infinite"
+    // Add keyframes to document if not already added
+    if (!document.querySelector('#pulse-keyframes')) {
+      const style = document.createElement('style')
+      style.id = 'pulse-keyframes'
+      style.textContent = `
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.15); opacity: 0.8; }
+        }
+      `
+      document.head.appendChild(style)
+    }
+  }
   
   container.appendChild(circle)
   
@@ -77,7 +152,7 @@ export function createHangoutSpotPinElement(title?: string, isSelected: boolean 
     label.style.whiteSpace = "nowrap"
     label.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)"
     label.style.pointerEvents = "none"
-    label.style.border = isSelected ? "2px solid #F97316" : "2px solid transparent"
+    label.style.border = isSelected ? `2px solid ${finalColor}` : "2px solid transparent"
     label.style.transition = "border-color 0.2s ease"
     container.appendChild(label)
   }

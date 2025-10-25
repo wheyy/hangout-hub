@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Search, X, Loader2, Navigation, MapPin } from "lucide-react"
+import { Search, X, Loader2, Navigation, MapPin, AlertTriangle } from "lucide-react"
 import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-places"
 
 interface SearchBarProps {
@@ -52,9 +52,11 @@ export function MapSearchBar({
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [hasError, setHasError] = useState(false)
   const [activeSuggestionField, setActiveSuggestionField] = useState<'from' | 'to' | 'search' | null>(null)
   const debounceTimerRef = useRef<NodeJS.Timeout>()
   const searchBarRef = useRef<HTMLDivElement>(null)
+  const skipNextFetchRef = useRef(false)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -89,22 +91,42 @@ export function MapSearchBar({
 
       debounceTimerRef.current = setTimeout(async () => {
         setIsLoading(true)
+        setHasError(false)
         try {
           const results = await GooglePlacesService.autocomplete(searchQuery)
           setSuggestions(results)
-          setShowSuggestions(results.length > 0)
+          setShowSuggestions(true)
+          setHasError(false)
         } catch (error) {
           console.error("Autocomplete error:", error)
           setSuggestions([])
+          setHasError(true)
+          setShowSuggestions(true)
         } finally {
           setIsLoading(false)
         }
-      }, 300)
+      }, 500)
     } else {
       // Normal search mode
       if (query.length < 2) {
         setSuggestions([])
         setShowSuggestions(false)
+        skipNextFetchRef.current = false
+        return
+      }
+
+      // Skip fetch if the query looks like coordinates (e.g., "1.3521, 103.8198")
+      const coordinatesPattern = /^-?\d+\.\d+,\s*-?\d+\.\d+$/
+      if (coordinatesPattern.test(query.trim())) {
+        setSuggestions([])
+        setShowSuggestions(false)
+        skipNextFetchRef.current = false
+        return
+      }
+
+      // Skip fetch if we just selected a suggestion
+      if (skipNextFetchRef.current) {
+        skipNextFetchRef.current = false
         return
       }
 
@@ -114,17 +136,21 @@ export function MapSearchBar({
 
       debounceTimerRef.current = setTimeout(async () => {
         setIsLoading(true)
+        setHasError(false)
         try {
           const results = await GooglePlacesService.autocomplete(query)
           setSuggestions(results)
-          setShowSuggestions(results.length > 0)
+          setShowSuggestions(true)
+          setHasError(false)
         } catch (error) {
           console.error("Autocomplete error:", error)
           setSuggestions([])
+          setHasError(true)
+          setShowSuggestions(true)
         } finally {
           setIsLoading(false)
         }
-      }, 300)
+      }, 500)
     }
 
     return () => {
@@ -178,10 +204,14 @@ export function MapSearchBar({
         onToChange(suggestion.description)
       }
     } else {
+      // Set flag to skip next autocomplete fetch
+      skipNextFetchRef.current = true
       setQuery(suggestion.description)
       handleSearch(suggestion.description)
     }
+    setSuggestions([])
     setShowSuggestions(false)
+    setHasError(false)
   }
 
   const handleClear = () => {
@@ -204,6 +234,7 @@ export function MapSearchBar({
     }
     setSuggestions([])
     setShowSuggestions(false)
+    setHasError(false)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -325,18 +356,33 @@ export function MapSearchBar({
           </div>
 
           {/* Autocomplete Dropdown for Directions Mode */}
-          {showSuggestions && suggestions.length > 0 && (
+          {showSuggestions && (
             <div className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden pointer-events-auto z-10">
-              {suggestions.map((suggestion) => (
-                <button
-                  key={suggestion.placeId}
-                  onClick={() => handleSuggestionClick(suggestion)}
-                  className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                >
-                  <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-gray-700">{suggestion.description}</span>
-                </button>
-              ))}
+              {hasError ? (
+                <div className="px-4 py-3 text-sm flex items-center gap-3 text-red-600">
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>Unable to load suggestions. Please try again.</span>
+                </div>
+              ) : suggestions.length === 0 ? (
+                <div className="px-4 py-3 text-sm flex items-center gap-3 text-gray-500">
+                  <Search className="w-4 h-4 flex-shrink-0" />
+                  <span>No results found. Try a different search.</span>
+                </div>
+              ) : (
+                suggestions.map((suggestion) => (
+                  <button
+                    key={suggestion.placeId}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSuggestionClick(suggestion)
+                    }}
+                    className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                  >
+                    <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="text-gray-700">{suggestion.description}</span>
+                  </button>
+                ))
+              )}
             </div>
           )}
         </div>
@@ -386,18 +432,33 @@ export function MapSearchBar({
             </div>
 
             {/* Autocomplete Dropdown */}
-            {showSuggestions && suggestions.length > 0 && (
+            {showSuggestions && (
               <div className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden pointer-events-auto z-10">
-                {suggestions.map((suggestion) => (
-                  <button
-                    key={suggestion.placeId}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                  >
-                    <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-gray-700">{suggestion.description}</span>
-                  </button>
-                ))}
+                {hasError ? (
+                  <div className="px-4 py-3 text-sm flex items-center gap-3 text-red-600">
+                    <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                    <span>Unable to load suggestions. Please try again.</span>
+                  </div>
+                ) : suggestions.length === 0 ? (
+                  <div className="px-4 py-3 text-sm flex items-center gap-3 text-gray-500">
+                    <Search className="w-4 h-4 flex-shrink-0" />
+                    <span>No results found. Try a different search.</span>
+                  </div>
+                ) : (
+                  suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.placeId}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        handleSuggestionClick(suggestion)
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                    >
+                      <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <span className="text-gray-700">{suggestion.description}</span>
+                    </button>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -406,18 +467,11 @@ export function MapSearchBar({
           {showPinButton && (
             <button
               onClick={onPinButtonClick}
-              className="pointer-events-auto flex items-center justify-center gap-2 h-[46px] px-4 bg-white rounded-md shadow-md border border-gray-300 hover:bg-gray-50 hover:border-gray-400 active:bg-gray-100 transition-all cursor-pointer text-xs font-medium text-gray-700"
+              className="pointer-events-auto flex items-center gap-2 h-10 px-3 bg-blue-600 rounded-full shadow-lg border border-blue-700 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer text-xs font-medium text-white"
               aria-label="Use pin to search area"
             >
-              <svg width="20" height="23" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z" 
-                      fill="#3B82F6" stroke="white" strokeWidth="3"/>
-                <g transform="translate(32, 20)">
-                  <circle cx="0" cy="-2" r="7" stroke="white" strokeWidth="2.5" fill="none"/>
-                  <line x1="5" y1="2.5" x2="8" y2="5.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                </g>
-              </svg>
-              <span className="whitespace-nowrap">Use Pin to Search Area</span>
+              <MapPin className="w-4 h-4 text-white flex-shrink-0" />
+              <span className="whitespace-nowrap">Use Pin to Search</span>
             </button>
           )}
         </>
@@ -524,18 +578,33 @@ export function MapSearchBar({
                 </button>
               </div>
 
-              {showSuggestions && suggestions.length > 0 && (
+              {showSuggestions && (
                 <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden pointer-events-auto z-10">
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.placeId}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                    >
-                      <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-gray-700">{suggestion.description}</span>
-                    </button>
-                  ))}
+                  {hasError ? (
+                    <div className="px-4 py-3 text-sm flex items-center gap-3 text-red-600">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span>Unable to load suggestions. Please try again.</span>
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="px-4 py-3 text-sm flex items-center gap-3 text-gray-500">
+                      <Search className="w-4 h-4 flex-shrink-0" />
+                      <span>No results found. Try a different search.</span>
+                    </div>
+                  ) : (
+                    suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.placeId}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          handleSuggestionClick(suggestion)
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                      >
+                        <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-gray-700">{suggestion.description}</span>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
@@ -589,38 +658,48 @@ export function MapSearchBar({
                 ) : null}
               </div>
 
-              {showSuggestions && suggestions.length > 0 && (
+              {showSuggestions && (
                 <div className="absolute top-full mt-2 w-full bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden pointer-events-auto z-10">
-                  {suggestions.map((suggestion) => (
-                    <button
-                      key={suggestion.placeId}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
-                    >
-                      <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-gray-700">{suggestion.description}</span>
-                    </button>
-                  ))}
+                  {hasError ? (
+                    <div className="px-4 py-3 text-sm flex items-center gap-3 text-red-600">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                      <span>Unable to load suggestions. Please try again.</span>
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="px-4 py-3 text-sm flex items-center gap-3 text-gray-500">
+                      <Search className="w-4 h-4 flex-shrink-0" />
+                      <span>No results found. Try a different search.</span>
+                    </div>
+                  ) : (
+                    suggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.placeId}
+                        onMouseDown={(e) => {
+                          e.preventDefault()
+                          handleSuggestionClick(suggestion)
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-3 border-b border-gray-100 last:border-b-0"
+                      >
+                        <Search className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-gray-700">{suggestion.description}</span>
+                      </button>
+                    ))
+                  )}
                 </div>
               )}
             </div>
 
             {showPinButton && (
-              <button
-                onClick={onPinButtonClick}
-                className="pointer-events-auto flex items-center justify-center gap-2 py-2.5 px-4 bg-white rounded-lg shadow-md border border-gray-300 hover:bg-gray-50 transition-all text-xs font-medium text-gray-700"
-                aria-label="Use pin to search area"
-              >
-                <svg width="20" height="23" viewBox="0 0 64 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M32 4C23.163 4 16 11.163 16 20C16 32 32 68 32 68C32 68 48 32 48 20C48 11.163 40.837 4 32 4Z"
-                        fill="#3B82F6" stroke="white" strokeWidth="3"/>
-                  <g transform="translate(32, 20)">
-                    <circle cx="0" cy="-2" r="7" stroke="white" strokeWidth="2.5" fill="none"/>
-                    <line x1="5" y1="2.5" x2="8" y2="5.5" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                  </g>
-                </svg>
-                <span className="whitespace-nowrap">Use Pin to Search Area</span>
-              </button>
+              <div className="flex justify-center">
+                <button
+                  onClick={onPinButtonClick}
+                  className="pointer-events-auto flex items-center gap-2 h-10 px-3 bg-blue-600 rounded-full shadow-lg border border-blue-700 hover:bg-blue-700 active:bg-blue-800 transition-all text-xs font-medium text-white w-fit"
+                  aria-label="Use pin to search area"
+                >
+                  <MapPin className="w-4 h-4 text-white flex-shrink-0" />
+                  <span className="whitespace-nowrap">Use Pin to Search</span>
+                </button>
+              </div>
             )}
           </>
         )}

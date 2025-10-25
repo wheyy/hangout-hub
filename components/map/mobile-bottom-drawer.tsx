@@ -17,6 +17,7 @@ interface MobileBottomDrawerProps {
   onSpotClick: (spot: HangoutSpot) => void
   onSpotBack: () => void
   onSpotGetDirections?: (spot: HangoutSpot) => void
+  onOpenCreateMeetup?: (spot: HangoutSpot) => void
 
   // Parking props
   carparks: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>
@@ -33,6 +34,7 @@ export function MobileBottomDrawer({
   onSpotClick,
   onSpotBack,
   onSpotGetDirections,
+  onOpenCreateMeetup,
   carparks,
   selectedCarpark,
   onCarparkSelect,
@@ -89,7 +91,7 @@ export function MobileBottomDrawer({
   // Filter hangout spots based on selected criteria
   const filteredSpots = spots.filter((spot) => {
     // Filter by price range
-    if (priceRange.length > 0 && !priceRange.includes(spot.priceLevel)) {
+    if (priceRange.length > 0 && !priceRange.includes(spot.priceRange)) {
       return false
     }
 
@@ -99,10 +101,11 @@ export function MobileBottomDrawer({
     }
 
     // Filter by operating hours
-    if (operatingHours === "open" && !spot.isOpen) {
+    const isOpen = spot.openingHours && spot.openingHours.toLowerCase() !== 'closed'
+    if (operatingHours === "open" && !isOpen) {
       return false
     }
-    if (operatingHours === "closed" && spot.isOpen) {
+    if (operatingHours === "closed" && isOpen) {
       return false
     }
 
@@ -445,6 +448,7 @@ export function MobileBottomDrawer({
                 variant="expanded"
                 onBack={onSpotBack}
                 onGetDirections={onSpotGetDirections}
+                onOpenCreateMeetup={onOpenCreateMeetup}
               />
             ) : (
               <div className="p-3 space-y-2">

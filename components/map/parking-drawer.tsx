@@ -1,7 +1,7 @@
 ﻿"use client"
 
+import { ChevronLeft, ChevronRight, ParkingSquare, Filter } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Filter } from "lucide-react"
 
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
 import { ParkingSpotCard } from "./parking-spot-card";
@@ -15,6 +15,7 @@ interface ParkingDrawerProps {
   selectedCarpark?: { info: CarparkInfo; availability?: CarparkAvailability } | null
   onBack?: () => void
 }
+
 
 export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirections, selectedCarpark, onBack }: ParkingDrawerProps) {
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -149,31 +150,35 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
               )}
             </div>
 
-          {/* Parking List */}
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {filteredCarparks && filteredCarparks.length > 0 ? (
-              filteredCarparks.map(({ info, availability }) => (
-                <ParkingSpotCard
-                  key={info.carpark_number}
-                  info={info}
-                  availability={availability}
-                  variant="compact"
-                  onClick={() => onSelect?.({ info, availability })}
-                />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {carparks && carparks.length > 0 ? "No matching carparks" : "No carparks found in area"}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {carparks && carparks.length > 0
-                    ? "Try adjusting your filters to see more results"
-                    : "Try moving the pin or zooming out"}
-                </p>
+            <div className="flex-1 overflow-y-auto pt-3 pb-20">
+              <div className="space-y-2 px-3">
+                {filteredCarparks && filteredCarparks.length > 0 ? (
+                  filteredCarparks.map(({ info, availability }) => (
+                    <ParkingSpotCard
+                      key={info.carpark_number}
+                      info={info}
+                      availability={availability}
+                      variant="compact"
+                      onClick={() => onSelect?.(info, availability)}
+                    />
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                      <ParkingSquare className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {filteredCarparks && filteredCarparks.length > 0 ? "No matching carparks" : "No carparks found in area"}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {filteredCarparks && filteredCarparks.length > 0
+                        ? "Try adjusting your filters to see more results"
+                        : "Try moving the pin or zooming out"}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </div>
           </>
         )}
       </div>

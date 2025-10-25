@@ -1,9 +1,11 @@
 export interface Location {
     name: string;
     address: string;
-    coordinates: [longitude: number, latitude: number];
+    // coordinates: GeolocationCoordinates;
+    coordinates: [number, number];
   
     getName(): string;
     getAddress(): string;
-    getCoordinates(): [longitude: number, latitude: number];
+    // getCoordinates(): GeolocationCoordinates;
+    getCoordinates(): [number, number];
 }

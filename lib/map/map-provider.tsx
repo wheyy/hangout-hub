@@ -33,31 +33,42 @@ interface MapProviderProps {
 
 export function MapProviderComponent({ children, options, className = "" }: MapProviderProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const mapInstanceRef = useRef<MapLibreMap | null>(null)
+  const isInitializingRef = useRef(false)
   const [map, setMap] = useState<MapLibreMap | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!containerRef.current) return
+    
+    // Prevent re-initialization if map already exists or is being created
+    if (mapInstanceRef.current || isInitializingRef.current) return
 
     const initializeMap = async () => {
+      isInitializingRef.current = true
       try {
         setError(null)
         const mapInstance = new MapLibreMap()
         await mapInstance.initialize(containerRef.current!, options)
+        mapInstanceRef.current = mapInstance
         setMap(mapInstance)
         setIsLoaded(true)
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to initialize map")
         console.error("Map initialization error:", err)
+      } finally {
+        isInitializingRef.current = false
       }
     }
 
     initializeMap()
 
     return () => {
-      if (map) {
-        map.destroy()
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.destroy()
+        mapInstanceRef.current = null
+        setIsLoaded(false)
       }
     }
   }, [])
@@ -65,7 +76,7 @@ export function MapProviderComponent({ children, options, className = "" }: MapP
   return (
     <MapContext.Provider value={{ map, isLoaded, error }}>
       <div className={`map-container ${className}`}>
-        <div ref={containerRef} className="absolute inset-0" />
+        <div ref={containerRef} className="w-full h-full" />
         {isLoaded && children}
       </div>
     </MapContext.Provider>
