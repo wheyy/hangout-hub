@@ -1,3 +1,5 @@
+import { haversineDistance } from "@/lib/utils/distance"
+
 export interface DirectionsRequest {
   origin: [number, number]
   destination: [number, number]
@@ -25,7 +27,7 @@ export class DirectionsService {
     const { origin, destination, travelMode } = request
 
     // Calculate straight-line distance for mock
-    const distance = this.calculateDistance(origin[1], origin[0], destination[1], destination[0])
+    const distance = haversineDistance(origin, destination)
 
     // Mock travel times based on mode
     let duration: number
@@ -54,19 +56,6 @@ export class DirectionsService {
         bounds: this.getBoundsFromCoordinates(route),
       },
     }
-  }
-
-  private static calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371e3 // Earth's radius in meters
-    const φ1 = (lat1 * Math.PI) / 180
-    const φ2 = (lat2 * Math.PI) / 180
-    const Δφ = ((lat2 - lat1) * Math.PI) / 180
-    const Δλ = ((lng2 - lng1) * Math.PI) / 180
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    return R * c
   }
 
   private static generateMockRoute(origin: [number, number], destination: [number, number]): [number, number][] {
