@@ -309,6 +309,7 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("")
   const [messageType, setMessageType] = useState<"success" | "error" | "">("")
   const [deleting, setDeleting] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState("")
 
   // Current user data
   const [userData, setUserData] = useState({
@@ -448,6 +449,7 @@ export default function ProfilePage() {
       setMessageType("error")
     } finally {
       setDeleting(false)
+      setDeleteConfirm("")
     }
   }
 
@@ -651,10 +653,22 @@ export default function ProfilePage() {
                         <AlertDialogDescription>
                           This will permanently delete your account and associated data. This action cannot be undone.
                         </AlertDialogDescription>
+                        <div className="mt-4 space-y-2">
+                          <Label htmlFor="deleteConfirm">Type DELETE to confirm</Label>
+                          <Input
+                            id="deleteConfirm"
+                            placeholder="DELETE"
+                            value={deleteConfirm}
+                            onChange={(e) => setDeleteConfirm(e.target.value)}
+                          />
+                          {deleteConfirm && deleteConfirm !== "DELETE" && (
+                            <p className="text-sm text-red-600">Confirmation must exactly match DELETE</p>
+                          )}
+                        </div>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting}>
+                        <AlertDialogCancel disabled={deleting} onClick={() => setDeleteConfirm("")}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteAccount} disabled={deleting || deleteConfirm !== "DELETE"}>
                           {deleting ? "Deleting..." : "Delete"}
                         </AlertDialogAction>
                       </AlertDialogFooter>
