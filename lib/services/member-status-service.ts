@@ -1,6 +1,6 @@
 import { doc, onSnapshot, Unsubscribe } from "firebase/firestore"
-import { db } from "@/lib/firebase/config"
-import type { MemberStatus } from "@/lib/data/meetup"
+import { db } from "@/lib/config/firebase"
+import type { MemberStatus } from "@/lib/models/meetup"
 
 export class MemberStatusService {
   private listener: Unsubscribe | null = null

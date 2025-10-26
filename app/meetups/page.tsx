@@ -19,12 +19,12 @@ import {
 import Link from "next/link"
 import { useState, useEffect, useMemo } from "react"
 import { CreateMeetupModal } from "@/components/meetup/create-meetup-modal"
-import { InvitationCard } from "@/components/invitation-card"
+import { InvitationCard } from "@/components/meetup/invitation-card"
 import { useUserStore } from "@/hooks/user-store"
-import { fetchInvitations } from "@/lib/invitation-utils"
-import { Invitation } from "@/lib/data/invitation"
-import { AuthGuard } from "@/components/auth-guard"
-import { AppHeader } from "@/components/app-header"
+import { fetchInvitations } from "@/lib/services/invitations"
+import { Invitation } from "@/lib/models/invitation"
+import { AuthGuard } from "@/components/layout/auth-guard"
+import { AppHeader } from "@/components/layout/app-header"
 import { useSearchParams, useRouter } from "next/navigation"
 
 export default function MeetupsPage() {

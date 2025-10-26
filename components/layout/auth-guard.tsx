@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/auth"
+import { authService } from "@/lib/auth/auth-service"
 import { MapPin } from "lucide-react"
 
 interface AuthGuardProps {

@@ -11,8 +11,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { MapPin, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/auth"
-import { AuthGuard } from "@/components/auth-guard"
+import { authService } from "@/lib/auth/auth-service"
+import { AuthGuard } from "@/components/layout/auth-guard"
 import { useUserStore } from "@/hooks/user-store"
 
 export default function LoginPage() {

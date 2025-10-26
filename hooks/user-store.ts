@@ -1,11 +1,11 @@
 //THIS file is for temporary fake data / methods that simulate other member's potential backend
 
-import { Invitation } from "@/lib/data/invitation"
-import { User } from "@/lib/data/user"
-import { Meetup } from "@/lib/data/meetup"
+import { Invitation } from "@/lib/models/invitation"
+import { User } from "@/lib/models/user"
+import { Meetup } from "@/lib/models/meetup"
 import { useState } from "react"
 import {create} from "zustand"
-import { authService } from "@/lib/auth"
+import { authService } from "@/lib/auth/auth-service"
 
 // ✅ Mock current user (the logged-in user)
 // export const CURRENT_USER: User = new User(

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { MapPin, Users, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/auth"
+import { authService } from "@/lib/auth/auth-service"
 import { useState } from "react"
 import {
   AlertDialog,

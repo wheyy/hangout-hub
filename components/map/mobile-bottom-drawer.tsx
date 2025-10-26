@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { Filter } from "lucide-react"
-import { HangoutSpot } from "@/lib/data/hangoutspot"
+import { HangoutSpot } from "@/lib/models/hangoutspot"
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
 import { HangoutSpotCard, HangoutSpotCardSkeleton } from "./hangout-spot-card"
 import { ParkingSpotCard } from "./parking-spot-card"

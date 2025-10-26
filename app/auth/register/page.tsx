@@ -12,8 +12,8 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { MapPin, Eye, EyeOff, Check } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/auth"
-import { AuthGuard } from "@/components/auth-guard"
+import { authService } from "@/lib/auth/auth-service"
+import { AuthGuard } from "@/components/layout/auth-guard"
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({

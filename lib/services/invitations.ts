@@ -15,8 +15,8 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
-import { db, auth } from "@/lib/firebase";
-import { Invitation } from "@/lib/data/invitation";
+import { db, auth } from "@/lib/config/firebase";
+import { Invitation } from "@/lib/models/invitation";
 
 /**
  * Helper: find user document by email.

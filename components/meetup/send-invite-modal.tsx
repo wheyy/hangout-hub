@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Mail, Send, Check } from "lucide-react"
 import { useUserStore } from "@/hooks/user-store"
-import { findUserByEmail, sendInvitation } from "@/lib/invitation-utils"
-import { Meetup } from "@/lib/data/meetup"
+import { findUserByEmail, sendInvitation } from "@/lib/services/invitations"
+import { Meetup } from "@/lib/models/meetup"
 
 interface SendInviteModalProps {
   isOpen: boolean

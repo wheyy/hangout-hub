@@ -4,13 +4,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, Calendar, Clock, Check, X, User, Trash2 } from "lucide-react"
-import { Invitation } from "@/lib/data/invitation"
+import { Invitation } from "@/lib/models/invitation"
 import {
   isInvitationExpired,
   acceptInvitation,
   rejectInvitation,
   deleteInvitation,
-} from "@/lib/invitation-utils"
+} from "@/lib/services/invitations"
 import { useUserStore } from "@/hooks/user-store"
 import { useState } from "react"
 

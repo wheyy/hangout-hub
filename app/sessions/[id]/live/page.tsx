@@ -8,7 +8,7 @@
 // import { MapPin, ArrowLeft, Users, Clock, MessageCircle, Phone } from "lucide-react"
 // import Link from "next/link"
 // import { useParams, useRouter } from "next/navigation"
-// import { LiveLocationMap } from "@/components/live-location-map"
+// import { LiveLocationMap } from "@/components/map/live-location-map"
 // import { RealTimeSessionStatus } from "@/components/real-time-session-status"
 
 // // Mock active session data

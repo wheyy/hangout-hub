@@ -1,6 +1,6 @@
 import { HangoutSpot } from "./hangoutspot"
 import { User } from "./user"
-import { db } from "@/lib/firebase/config";
+import { db } from "@/lib/config/firebase";
 import { 
     collection, 
     doc, 
@@ -13,7 +13,7 @@ import {
     updateDoc
   } from "firebase/firestore"; 
 
-import { useUserStore } from "../../hooks/user-store";
+import { useUserStore } from "@/hooks/user-store";
 import { use } from "react";
 
 export interface MemberStatus {

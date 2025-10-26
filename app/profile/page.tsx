@@ -295,10 +295,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { User, Eye, EyeOff, Check, X } from "lucide-react"
 import { useEffect, useState } from "react"
-import { authService } from "@/lib/auth"
-import { AuthGuard } from "@/components/auth-guard"
+import { authService } from "@/lib/auth/auth-service"
+import { AuthGuard } from "@/components/layout/auth-guard"
 import { useRouter } from "next/navigation"
-import { AppHeader } from "@/components/app-header"
+import { AppHeader } from "@/components/layout/app-header"
 
 export default function ProfilePage() {
   const router = useRouter()

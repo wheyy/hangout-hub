@@ -1,6 +1,6 @@
 
 // Carpark API service for fetching carpark availability and static info (coords/address)
-import { ParkingSpot, ParkingType } from "../data/parkingspot";
+import { ParkingSpot, ParkingType } from "@/lib/models/parkingspot";
 import { svy21ToWgs84 } from "svy21";
 
 export interface CarparkAvailability {

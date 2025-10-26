@@ -7,9 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { MapPin, Users, Navigation, Shield, Clock, AlertCircle, CheckCircle, Mail, UserX, Edit, Save, X } from "lucide-react"
 import { useState, useEffect } from "react"
-import { Input } from "./ui/input"
-import { User } from "@/lib/data/user"
-import { Meetup } from "@/lib/data/meetup"
+import { Input } from "@/components/ui/input"
+import { User } from "@/lib/models/user"
+import { Meetup } from "@/lib/models/meetup"
 import { useUserStore } from "@/hooks/user-store"
 
 

@@ -1,6 +1,6 @@
 import { doc, onSnapshot, Unsubscribe } from "firebase/firestore"
-import { db } from "@/lib/firebase/config"
-import { User } from "@/lib/data/user"
+import { db } from "@/lib/config/firebase"
+import { User } from "@/lib/models/user"
 
 const LOCATION_UPDATE_INTERVAL = 1 * 60 * 1000 // 1 minute
 

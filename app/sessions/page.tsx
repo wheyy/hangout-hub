@@ -8,7 +8,7 @@
 // import { MapPin, Calendar, Users, Plus, Settings, Eye } from "lucide-react"
 // import Link from "next/link"
 // import { useRouter } from "next/navigation"
-// import { AuthGuard } from "@/components/auth-guard"
+// import { AuthGuard } from "@/components/layout/auth-guard"
 
 // // Mock session data
 // const mockSessions = [

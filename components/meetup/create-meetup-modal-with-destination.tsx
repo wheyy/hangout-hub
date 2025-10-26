@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MapPin, Calendar, Clock } from "lucide-react"
-import { Meetup } from "@/lib/data/meetup"
+import { Meetup } from "@/lib/models/meetup"
 import { useRouter } from "next/navigation"
-import { HangoutSpot } from "@/lib/data/hangoutspot"
+import { HangoutSpot } from "@/lib/models/hangoutspot"
 import { useUserStore } from "@/hooks/user-store"
 
 interface CreateMeetupModalWithDestinationProps {

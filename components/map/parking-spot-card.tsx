@@ -1,7 +1,7 @@
 "use client"
 
 import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
-import { ParkingType } from "@/lib/data/parkingspot"
+import { ParkingType } from "@/lib/models/parkingspot"
 import { ArrowLeft, Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button"
 

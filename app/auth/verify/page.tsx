@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { MapPin } from "lucide-react"
-import { AuthGuard } from "@/components/auth-guard"
+import { AuthGuard } from "@/components/layout/auth-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 

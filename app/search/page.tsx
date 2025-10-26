@@ -23,8 +23,8 @@
 //   Palette,
 // } from "lucide-react"
 // import Link from "next/link"
-// import type { PlaceCategory, PriceRange, SearchFilters } from "@/lib/types"
-// import { AuthGuard } from "@/components/auth-guard"
+// import type { PlaceCategory, PriceRange, SearchFilters } from "@/lib/types/index"
+// import { AuthGuard } from "@/components/layout/auth-guard"
 
 // // Mock data for demonstration
 // const mockPlaces = [

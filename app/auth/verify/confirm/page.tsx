@@ -4,11 +4,11 @@ import { useEffect, useRef, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { MapPin } from "lucide-react"
-import { AuthGuard } from "@/components/auth-guard"
+import { AuthGuard } from "@/components/layout/auth-guard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { auth } from "@/lib/firebase"
+import { auth } from "@/lib/config/firebase"
 import { applyActionCode } from "firebase/auth"
 
 export default function VerifyConfirmPage() {

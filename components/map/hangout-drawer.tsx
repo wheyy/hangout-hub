@@ -1,6 +1,6 @@
 "use client"
 
-import { HangoutSpot } from "@/lib/data/hangoutspot"
+import { HangoutSpot } from "@/lib/models/hangoutspot"
 import { HangoutSpotCard, HangoutSpotCardSkeleton } from "./hangout-spot-card"
 import { ChevronLeft, ChevronRight, Filter } from "lucide-react"
 import { useState, useRef, useEffect } from "react"

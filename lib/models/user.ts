@@ -1,5 +1,5 @@
 import { Meetup } from "./meetup"
-import { db } from "../firebase"
+import { db } from "@/lib/config/firebase"
 import {
     arrayRemove,
     arrayUnion,

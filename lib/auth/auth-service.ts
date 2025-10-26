@@ -1,5 +1,5 @@
-import { auth, db } from "./firebase"
-import { User as AppUser } from "./data/user"
+import { auth, db } from "@/lib/config/firebase"
+import { User as AppUser } from "@/lib/models/user"
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,

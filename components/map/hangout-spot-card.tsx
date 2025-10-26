@@ -1,6 +1,6 @@
 "use client"
 
-import { HangoutSpot } from "@/lib/data/hangoutspot"
+import { HangoutSpot } from "@/lib/models/hangoutspot"
 import { Star, MapPin, ArrowLeft, Users, Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"

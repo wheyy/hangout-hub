@@ -2,7 +2,7 @@
 
 import { useEffect } from "react"
 import { useMap } from "@/lib/map/map-provider"
-import type { HangoutSpot } from "@/lib/data/hangoutspot"
+import type { HangoutSpot } from "@/lib/models/hangoutspot"
 
 interface MapMarkersProps {
   spots?: HangoutSpot[]

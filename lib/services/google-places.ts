@@ -1,4 +1,4 @@
-import { HangoutSpot } from "@/lib/data/hangoutspot"
+import { HangoutSpot } from "@/lib/models/hangoutspot"
 import { getCache, setCache } from "@/lib/utils/cache"
 import { isInSingapore } from "@/lib/utils/singapore-boundary"
 
