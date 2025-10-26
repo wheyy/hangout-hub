@@ -34,23 +34,24 @@ export default function MeetupsPage() {
   const router = useRouter()
   const CURRENT_USER = useUserStore((s) => s.user)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  console.log("MeetupsPage render, CURRENT_USER:", CURRENT_USER)
 
-  // ✅ Get meetups directly from CURRENT_USER object
+  // Get meetups directly from CURRENT_USER object
   const meetups = CURRENT_USER?.getMeetups?.() ?? []
 
-  // ✅ Filter meetups
+  // Filter meetups
   const activeMeetups = useMemo(
     () => meetups.filter((meetup) => meetup.getStatus() === "active"),
     [meetups]
   )
   
-  // ✅ Recalculate pastMeetup
+  // Recalculate pastMeetup
   const pastMeetups = useMemo(
     () => meetups.filter((meetup) => meetup.getStatus() === "past"),
     [meetups]
   )
 
-  // ✅ Load invitations from Firestore
+  // Load invitations from Firestore
   useEffect(() => {
     async function loadData() {
       if (!CURRENT_USER?.id) return

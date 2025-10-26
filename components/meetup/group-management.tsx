@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { User } from "@/lib/models/user"
 import { Meetup } from "@/lib/models/meetup"
 import { useUserStore } from "@/hooks/user-store"
+import { useRouter } from "next/navigation"
 
 
 interface GroupManagementProps {
@@ -32,6 +33,7 @@ export function GroupManagement({
   const [meetup, setMeetup] = useState<Meetup>(cur_meetup)
   const [hoveredMember, setHoveredMember] = useState<string | null>(null)
   const groupMembers = meetup.getMembers()
+  const CURRENT_USER = useUserStore((s) => s.user)
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({
     title: "",
@@ -39,6 +41,8 @@ export function GroupManagement({
     date: "",
     time: "",
   })
+  const router = useRouter()
+
 
   const onEdit = () => {
     setEditData({
@@ -54,12 +58,18 @@ export function GroupManagement({
     const [year, month, day] = editData.date.split("-").map(Number)
     const [hour, minute] = editData.time.split(":").map(Number)
 
+    const oldStatus = meetup.getStatus()
     // Note: Destination editing disabled for now - would need autocomplete implementation
     meetup.updateTitle(editData.title)
     meetup.updateDateTime(new Date(year, month - 1, day, hour, minute))
     meetup.save()
     setMeetup(meetup)
     setIsEditing(false)
+    console.log("new status", meetup.getStatus())
+    const newStatus = meetup.getStatus()
+    if (oldStatus !== newStatus) {
+      router.push("/meetups")
+    }
   }
 
   const onCancelEdit = () => {
@@ -69,10 +79,17 @@ export function GroupManagement({
 
   const handleKickUser = (member: User) => {
     console.log(`Kicking user ${member.getUsername()} (${member.getId}) from meetup`)
-    // Here you would implement the actual kick logic
-    // For now, just showing the action in console
     meetup.removeMember(member).then(() => {
       console.log(`User ${member.getUsername()} has been kicked from the meetup.`)
+    })
+  }
+
+  const handleLeave = () => {
+    if (!CURRENT_USER) return
+    console.log(`User ${CURRENT_USER.getUsername()} is leaving meetup ${meetup.title}`)
+    meetup.removeMember(CURRENT_USER).then(() => {
+      console.log(`User ${CURRENT_USER.getUsername()} has left the meetup.`)
+      router.push("/meetups")
     })
   }
 
@@ -305,6 +322,7 @@ export function GroupManagement({
             </Button>
           ) : (
             <Button
+              onClick={handleLeave}
               variant="outline"
               className="w-full justify-start text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
             >

@@ -17,6 +17,9 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "@/lib/config/firebase";
 import { Invitation } from "@/lib/models/invitation";
+import { Meetup } from "../models/meetup";
+import { User } from "../models/user";
+import { useUserStore } from "@/hooks/user-store";
 
 /**
  * Helper: find user document by email.
@@ -178,22 +181,32 @@ export async function acceptInvitation({
       respondedAt: serverTimestamp(),
     });
 
-    // add recipient to meetup member arrays and members map
-    const meetupRef = doc(db, "meetups", meetupId);
-    batch.update(meetupRef, {
-      memberIds: arrayUnion(recipientId),
-      [`members.${recipientId}`]: {
-        joinedAt: serverTimestamp(),
-        arrivedAt: null,
-        locationSharingEnabled: false,
-      },
-    });
+    // don't have time to edit all but this portion is required to update the meetups right after accepting
+    const meetup = await Meetup.load(meetupId);
+    const recipient = await User.loadFromFirestoreFull(recipientId);
+    if (!meetup) throw new Error("Meetup not found");
+    else if (!recipient) throw new Error("Recipient user not found");
+    else { meetup.addMember(recipient); 
+      recipient.addMeetup(meetup);
+      console.log(" Meetup after adding member:", meetup); }
+      useUserStore.getState().initializeUser()
 
-    // add meetup id to user's meetupIds
-    const userRef = doc(db, "users", recipientId);
-    batch.update(userRef, {
-      meetupIds: arrayUnion(meetupId),
-    });
+    // // add recipient to meetup member arrays and members map
+    // const meetupRef = doc(db, "meetups", meetupId);
+    // batch.update(meetupRef, {
+    //   memberIds: arrayUnion(recipientId),
+    //   [`members.${recipientId}`]: {
+    //     joinedAt: serverTimestamp(),
+    //     arrivedAt: null,
+    //     locationSharingEnabled: false,
+    //   },
+    // });
+
+    // // add meetup id to user's meetupIds
+    // const userRef = doc(db, "users", recipientId);
+    // batch.update(userRef, {
+    //   meetupIds: arrayUnion(meetupId),
+    // });
 
     console.log("🔍 About to commit batch...");
     
@@ -229,26 +242,26 @@ export async function acceptInvitation({
         console.error("❌ Failed: top-level invitation", e.message);
       }
       
-      try {
-        await updateDoc(meetupRef, {
-          memberIds: arrayUnion(recipientId),
-          [`members.${recipientId}`]: {
-            joinedAt: serverTimestamp(),
-            arrivedAt: null,
-            locationSharingEnabled: false,
-          },
-        });
-        console.log("✅ Meetup updated");
-      } catch (e: any) {
-        console.error("❌ Failed: meetup update", e.message);
-      }
+      // try {
+      //   await updateDoc(meetupRef, {
+      //     memberIds: arrayUnion(recipientId),
+      //     [`members.${recipientId}`]: {
+      //       joinedAt: serverTimestamp(),
+      //       arrivedAt: null,
+      //       locationSharingEnabled: false,
+      //     },
+      //   });
+      //   console.log("✅ Meetup updated");
+      // } catch (e: any) {
+      //   console.error("❌ Failed: meetup update", e.message);
+      // }
       
-      try {
-        await updateDoc(userRef, { meetupIds: arrayUnion(meetupId) });
-        console.log("✅ User updated");
-      } catch (e: any) {
-        console.error("❌ Failed: user update", e.message);
-      }
+      // try {
+      //   await updateDoc(userRef, { meetupIds: arrayUnion(meetupId) });
+      //   console.log("✅ User updated");
+      // } catch (e: any) {
+      //   console.error("❌ Failed: user update", e.message);
+      // }
       
       throw batchError;
     }

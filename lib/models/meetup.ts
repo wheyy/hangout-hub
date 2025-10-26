@@ -216,6 +216,8 @@ export class Meetup {
                 }
             })
 
+            console.log("Updating meetup in Firestore:", this.id);
+            console.log("Members:", this.getMemberIds());
             await updateDoc(doc(db, "meetups", this.id), {
                 title: this.title,
                 dateTime: this.dateTime.toISOString(),
@@ -290,8 +292,9 @@ export class Meetup {
     // ✅ Remove member and update Firestore
     async removeMember(user: User): Promise<void> {
         this.members = this.members.filter(member => member.id !== user.id);
-        user.removeMeetup(this);
+        await user.removeMeetup(this);
         await this.save(); // Sync to Firestore
+        console.log(`User ${user.name} removed from meetup ${this.title}.`);
     }
 
     start(): void {

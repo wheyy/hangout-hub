@@ -19,7 +19,6 @@ import { authService } from "@/lib/auth/auth-service"
 
 interface UserStore {
   user: User | null;
-  setUser: (user: User) => void;
   initializeUser: () => Promise<void>;
   isLoading: boolean;
 }
@@ -30,20 +29,20 @@ export const useUserStore = create<UserStore>((set, get) => {
     user: null,
     isLoading: true,
     
-    setUser: (next) => {
-      next.notifyUpdate = () => set({ user: next });
-      set({ user: next });
-    },
     initializeUser: async () => {
       try {
         const user = await authService.getCurrentUserFull();
         
         // Set up notifyUpdate to trigger re-renders
-        user.notifyUpdate = () => {
-          set({ user: { ...get().user } as User }); // Force new reference
+        user.notifyUpdate = async () => {
+          console.log("User notifyUpdate called");
+          const user = await authService.getCurrentUserFull();
+          set({ user }); // Force new reference
         };
         
         set({ user, isLoading: false });
+
+        console.log("User initialized:", user);
       } catch (error) {
         console.error("Failed to initialize user:", error);
         set({ user: null, isLoading: false });

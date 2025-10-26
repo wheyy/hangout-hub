@@ -28,6 +28,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
   const CURRENT_USER = useUserStore((s) => s.user)
   const [meetup, setMeetup] = useState<Meetup | null>(null)
   const router = useRouter()
+  console.log("MeetupPage render, meetup:", meetup)
 
   useEffect(() => {
     if (!CURRENT_USER) {
@@ -52,6 +53,22 @@ export default function MeetupPage({ params }: MeetupPageProps) {
           <p className="text-muted-foreground">Loading meetup...</p>
         </div>
       </div>
+    )
+  }
+
+  console.log("CURRENT_USER in meetup/[id]:", CURRENT_USER)
+  if (!meetup.getMemberIds().includes(CURRENT_USER.getId())) {
+    return (
+      // Unauthorized View
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center p-6 bg-white rounded shadow">
+          <h2 className="text-2xl font-semibold mb-4">Access Denied</h2>
+          <p className="text-gray-600 mb-6">You are not a member of this meetup.</p>
+          <Link href="/meetups">
+          <Button >Back to Meetups</Button>
+        </Link>
+      </div>
+    </div>
     )
   }
 
@@ -84,7 +101,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         </div>
 
         {/* Tab Navigation - Only visible on mobile */}
-        <div className="flex gap-1 mt-3 max-[650px]:flex min-[651px]:hidden">
+        {meetup.getStatus() == "active" ? <div className="flex gap-1 mt-3 max-[650px]:flex min-[651px]:hidden">
           <Button
             variant={activeTab === "tracking" ? "default" : "ghost"}
             size="sm"
@@ -102,9 +119,9 @@ export default function MeetupPage({ params }: MeetupPageProps) {
           >
             <MapPin className="w-4 h-4 mr-1" />
             Live Map
-          </Button>
-        </div>
-      </header>
+          </Button> 
+        </div> : null}
+      </header> 
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
@@ -126,7 +143,7 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         </div>
 
         {/* Desktop: 2-column grid layout */}
-        <div className="max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-2 h-full overflow-hidden">
+        <div className={meetup.getStatus() == "active" ?  "max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-2 h-full overflow-hidden" : "max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-1 h-full overflow-hidden"}>
           <div className="h-full overflow-y-auto p-4 border-r">
             <GroupManagement
               cur_meetup={meetup}
@@ -136,10 +153,10 @@ export default function MeetupPage({ params }: MeetupPageProps) {
               onDelete={() => setIsDeleteModalOpen(true)}
             />
           </div>
-          <div className="h-full overflow-hidden">
+          {meetup.getStatus() == "active" ? <div className="h-full overflow-hidden">
             <LiveMapView meetup={meetup} />
-          </div>
-        </div>
+          </div> : null}
+        </div> 
       </div>
 
       {/* Send Invite Modal */}
