@@ -1,6 +1,7 @@
 import { MapLibreMap } from "@/lib/map/maplibre-map"
 import { getDirections, DirectionsRoute } from "@/lib/services/osrm-directions"
-import { fetchCarparkAvailability, getCarparksWithinRadiusAsync, CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
+import { fetchCarparkAvailability, getCarparksWithinRadiusAsync } from "@/lib/services/carpark-api"
+import { ParkingSpot } from "@/lib/models/parkingspot"
 
 export interface RouteResult {
   route: DirectionsRoute
@@ -95,41 +96,31 @@ export async function drawRouteOnMap(
  * @param destination - Destination coordinates [lng, lat]
  * @param radiusMeters - Search radius in meters (default: 500)
  * @param onCarparkSelect - Callback when a carpark marker is clicked
- * @returns Array of carparks with availability data
+ * @returns Array of ParkingSpot objects
  */
 export async function fetchAndDisplayCarparks(
   map: MapLibreMap,
   destination: [number, number],
   radiusMeters: number = 500,
-  onCarparkSelect: (info: CarparkInfo, availability?: CarparkAvailability) => void
-): Promise<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>> {
+  onCarparkSelect: (spot: ParkingSpot) => void
+): Promise<ParkingSpot[]> {
   try {
     const carparkAvailabilities = await fetchCarparkAvailability()
-    const carparkInfos = await getCarparksWithinRadiusAsync(destination, radiusMeters)
-
-    // Merge info and availability
-    const carparksWithAvail = carparkInfos.map((info) => ({
-      info,
-      availability: carparkAvailabilities.find((a) => a.carpark_number === info.carpark_number),
-    }))
+    const carparks = await getCarparksWithinRadiusAsync(destination, radiusMeters, carparkAvailabilities)
 
     // Add carpark markers to the map
-    carparksWithAvail.forEach(({ info, availability }) => {
-      const availabilityPercentage = availability && availability.total_lots > 0
-        ? (availability.lots_available / availability.total_lots) * 100
-        : undefined
-
+    carparks.forEach((spot) => {
       map.addMarker({
-        id: `carpark-${info.carpark_number}`,
-        coordinates: info.coordinates,
-        title: info.address,
+        id: `carpark-${spot.id}`,
+        coordinates: spot.coordinates,
+        title: spot.address,
         type: "parking",
-        availabilityPercentage,
-        onClick: () => onCarparkSelect(info, availability),
+        availabilityPercentage: spot.hasAvailabilityData() ? spot.getAvailabilityPercentage() : undefined,
+        onClick: () => onCarparkSelect(spot),
       })
     })
 
-    return carparksWithAvail
+    return carparks
   } catch (error) {
     console.error("Error fetching carparks:", error)
     return []

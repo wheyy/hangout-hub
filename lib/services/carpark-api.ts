@@ -3,14 +3,15 @@
 import { ParkingSpot, ParkingType } from "@/lib/models/parkingspot";
 import { svy21ToWgs84 } from "svy21";
 
-export interface CarparkAvailability {
+// Internal interfaces (not exported - used only for API data transformation)
+interface CarparkAvailability {
 	carpark_number: string;
 	total_lots: number;
 	lots_available: number;
 	lot_type: string;
 }
 
-export interface CarparkInfo {
+interface CarparkInfo {
 	carpark_number: string;
 	address: string;
 	coordinates: [number, number];
@@ -21,7 +22,7 @@ export interface CarparkInfo {
 	car_park_decks?: string;
 	gantry_height?: string;
 	car_park_basement?: string;
-	source?: "hdb" | "commercial"; // distinguish HDB vs commercial/mall carparks
+	source?: "hdb" | "commercial";
 	weekday_rate_1?: string;
 	weekday_rate_2?: string;
 	saturday_rate?: string;
@@ -129,13 +130,21 @@ export async function fetchCarparkAvailability(): Promise<CarparkAvailability[]>
 
 export async function getCarparksWithinRadiusAsync(
 	center: [number, number],
-	radius: number
-): Promise<CarparkInfo[]> {
+	radius: number,
+	availabilityData?: CarparkAvailability[]
+): Promise<ParkingSpot[]> {
 	const list = await ensureCarparkInfoLoaded();
+
 	// Filter carparks within radius (meters)
-	return list.filter((cp) => {
+	const nearby = list.filter((cp) => {
 		const dist = getDistanceMeters(center, cp.coordinates);
 		return dist <= radius;
+	});
+
+	// Transform to ParkingSpot, merging with availability data
+	return nearby.map((info) => {
+		const availability = availabilityData?.find((a) => a.carpark_number === info.carpark_number);
+		return new ParkingSpot(info, availability);
 	});
 }
 

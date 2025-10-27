@@ -6,7 +6,7 @@ import { MapSearchBar } from "@/components/map/map-search-bar"
 import { HangoutDrawer } from "@/components/map/hangout-drawer"
 import { ParkingDrawer } from "@/components/map/parking-drawer"
 import { MobileBottomDrawer } from "@/components/map/mobile-bottom-drawer"
-import { fetchCarparkAvailability, getCarparksWithinRadiusAsync, CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
+import { ParkingSpot } from "@/lib/models/parkingspot"
 import { ErrorPopup } from "@/components/map/error-popup"
 import { HangoutSpot } from "@/lib/models/hangoutspot"
 import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-places"
@@ -32,8 +32,8 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
   const [dragDebounceTimer, setDragDebounceTimer] = useState<NodeJS.Timeout | null>(null)
   const [searchBarValue, setSearchBarValue] = useState("")
   const [hasSearchPin, setHasSearchPin] = useState(false)
-  const [carparks, setCarparks] = useState<Array<{ info: CarparkInfo; availability?: CarparkAvailability }>>([])
-  const [selectedCarpark, setSelectedCarpark] = useState<{ info: CarparkInfo; availability?: CarparkAvailability } | null>(null)
+  const [carparks, setCarparks] = useState<ParkingSpot[]>([])
+  const [selectedCarpark, setSelectedCarpark] = useState<ParkingSpot | null>(null)
 
   // Directions state
   const [directionsMode, setDirectionsMode] = useState(false)
@@ -84,10 +84,10 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
   useEffect(() => {
     if (!map) return
 
-    carparks.forEach(({ info }) => {
+    carparks.forEach((spot) => {
       map.updateMarkerSelection(
-        `carpark-${info.carpark_number}`,
-        selectedCarpark?.info.carpark_number === info.carpark_number
+        `carpark-${spot.id}`,
+        selectedCarpark?.id === spot.id
       )
     })
   }, [selectedCarpark, carparks, map])
@@ -108,17 +108,10 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
       const fetchedSpots = await GooglePlacesService.searchNearbyInArea([lng, lat], 500)
       setSpots(fetchedSpots)
 
-      // Carparks
-  const carparkAvailabilities = await fetchCarparkAvailability()
-  const carparkInfos = await getCarparksWithinRadiusAsync([lng, lat], 500)
-      // Merge info and availability
-      const carparksWithAvail = carparkInfos.map((info) => ({
-        info,
-        availability: carparkAvailabilities.find((a) => a.carpark_number === info.carpark_number),
-      }))
-      setCarparks(carparksWithAvail)
-
+      // Clear existing markers before adding new ones
       map.clearMarkers()
+
+      // Add hangout spot markers
       fetchedSpots.forEach((spot) => {
         map.addMarker({
           id: `spot-${spot.id}`,
@@ -127,20 +120,11 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
           onClick: () => handleCardClick(spot),
         })
       })
-      carparksWithAvail.forEach(({ info, availability }) => {
-        const availabilityPercentage = availability && availability.total_lots > 0
-          ? (availability.lots_available / availability.total_lots) * 100
-          : undefined
 
-        map.addMarker({
-          id: `carpark-${info.carpark_number}`,
-          coordinates: info.coordinates,
-          title: info.address,
-          type: "parking",
-          availabilityPercentage,
-          onClick: () => handleCarparkSelect(info, availability),
-        })
-      })
+      // Fetch carparks and add their markers (fetchAndDisplayCarparks adds markers internally)
+      const parkingSpots = await fetchAndDisplayCarparks(map, [lng, lat], 500, handleCarparkSelect)
+      setCarparks(parkingSpots)
+
       // Show the parking drawer when we have results
       setParkingDrawerOpen(true)
     } catch (err) {
@@ -240,14 +224,14 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
     setSelectedSpot(null)
   }
 
-  const handleCarparkSelect = (info: CarparkInfo, availability?: CarparkAvailability) => {
+  const handleCarparkSelect = (spot: ParkingSpot) => {
     if (!map) return
 
     // Zoom to the selected carpark
-    map.setCenter(info.coordinates[0], info.coordinates[1], 17)
+    map.setCenter(spot.coordinates[0], spot.coordinates[1], 17)
 
     // Set as selected carpark and open the drawer
-    setSelectedCarpark({ info, availability })
+    setSelectedCarpark(spot)
     setParkingDrawerOpen(true)
   }
 
@@ -255,11 +239,11 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
     setSelectedCarpark(null)
   }
 
-  const handleCarparkGetDirections = async (info: CarparkInfo) => {
+  const handleCarparkGetDirections = async (spot: ParkingSpot) => {
     // Enter directions mode with the carpark as destination
     setDirectionsMode(true)
-    setToLocation(info.address)
-    setToCoords(info.coordinates)
+    setToLocation(spot.address)
+    setToCoords(spot.coordinates)
 
     // Try to use user's current location as starting point
     if (!navigator.geolocation) {
@@ -280,7 +264,7 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
         }
 
         try {
-          const result = await drawRouteOnMap(map, coords, info.coordinates, 'Start', 'Destination')
+          const result = await drawRouteOnMap(map, coords, spot.coordinates, 'Start', 'Destination')
           setCurrentRoute(result.route)
           console.log(`Route to carpark: ${formatDistance(result.distance)}, ${formatDuration(result.duration)}`)
         } catch (err) {

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Filter } from "lucide-react"
 import { HangoutSpot } from "@/lib/models/hangoutspot"
-import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
+import { ParkingSpot } from "@/lib/models/parkingspot"
 import { HangoutSpotCard, HangoutSpotCardSkeleton } from "./hangout-spot-card"
 import { ParkingSpotCard } from "./parking-spot-card"
 
@@ -20,11 +20,11 @@ interface MobileBottomDrawerProps {
   onOpenCreateMeetup?: (spot: HangoutSpot) => void
 
   // Parking props
-  carparks: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>
-  selectedCarpark: { info: CarparkInfo; availability?: CarparkAvailability } | null
-  onCarparkSelect: (info: CarparkInfo, availability?: CarparkAvailability) => void
+  carparks: ParkingSpot[]
+  selectedCarpark: ParkingSpot | null
+  onCarparkSelect: (spot: ParkingSpot) => void
   onCarparkBack: () => void
-  onCarparkGetDirections?: (info: CarparkInfo) => void
+  onCarparkGetDirections?: (spot: ParkingSpot) => void
 }
 
 export function MobileBottomDrawer({
@@ -117,20 +117,11 @@ export function MobileBottomDrawer({
     return true
   })
 
-  // Calculate availability color for filtering
-  const getAvailabilityColor = (availability?: CarparkAvailability): string | null => {
-    if (!availability || availability.total_lots === 0) return null
-    const percentage = (availability.lots_available / availability.total_lots) * 100
-    if (percentage >= 50) return "green"
-    if (percentage >= 20) return "amber"
-    return "red"
-  }
-
   // Filter carparks based on selected colors
-  const filteredCarparks = carparks.filter(({ availability }) => {
+  const filteredCarparks = carparks.filter((spot) => {
     if (selectedColors.length === 0) return true
-    const color = getAvailabilityColor(availability)
-    return color && selectedColors.includes(color)
+    const color = spot.getAvailabilityColor()
+    return color !== "gray" && selectedColors.includes(color)
   })
 
   // Handle touch start
@@ -482,8 +473,7 @@ export function MobileBottomDrawer({
           <>
             {selectedCarpark ? (
               <ParkingSpotCard
-                info={selectedCarpark.info}
-                availability={selectedCarpark.availability}
+                spot={selectedCarpark}
                 variant="expanded"
                 onBack={onCarparkBack}
                 onGetDirections={onCarparkGetDirections}
@@ -500,13 +490,12 @@ export function MobileBottomDrawer({
                     </p>
                   </div>
                 ) : (
-                  filteredCarparks.map(({ info, availability }) => (
+                  filteredCarparks.map((spot) => (
                     <ParkingSpotCard
-                      key={info.carpark_number}
-                      info={info}
-                      availability={availability}
+                      key={spot.id}
+                      spot={spot}
                       variant="compact"
-                      onClick={() => onCarparkSelect(info, availability)}
+                      onClick={() => onCarparkSelect(spot)}
                     />
                   ))
                 )}
