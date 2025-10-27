@@ -527,7 +527,7 @@ function MapInterface({ onOpenCreateMeetup }: MapInterfaceProps) {
         spots={spots}
         loading={loading}
         selectedSpot={selectedSpot}
-        isOpen={hangoutDrawerOpen && !directionsMode}
+        isOpen={hangoutDrawerOpen}
         onToggle={handleToggleHangoutDrawer}
         onCardClick={handleCardClick}
         onBack={handleBack}
