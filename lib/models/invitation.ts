@@ -1,8 +1,3 @@
-// export interface User {
-//   id: string
-//   name: string
-//   email: string
-// }
 
 import { HangoutSpot } from "./hangoutspot"
 
@@ -10,8 +5,7 @@ export interface Invitation {
   id: string
   meetupId: string
   meetupTitle: string
-  // destination: HangoutSpot
-  destination: string, //TODO: CHANGE TO HANGOUT SPOT WHEN Location search by Map Team is done
+  destination: string, 
   dateTime: Date
   senderId: string
   senderName: string
@@ -23,16 +17,3 @@ export interface Invitation {
   sentAt: string
   respondedAt?: string
 }
-
-// export interface Meetup {
-//   id: string
-//   title: string
-//   destination: string
-//   date: string
-//   time: string
-//   status: string
-//   memberCount: number
-//   creator: string
-//   creatorId: string
-//   members: string[] // Array of user IDs
-// }
