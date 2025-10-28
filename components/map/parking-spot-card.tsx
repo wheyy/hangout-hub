@@ -1,37 +1,20 @@
 "use client"
 
-import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api"
-import { ParkingType } from "@/lib/models/parkingspot"
+import { ParkingSpot, ParkingType } from "@/lib/models/parkingspot"
 import { ArrowLeft, Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface ParkingSpotCardProps {
-  info: CarparkInfo
-  availability?: CarparkAvailability
+  spot: ParkingSpot
   variant: "compact" | "expanded"
   onClick?: () => void
   onBack?: () => void
-  onGetDirections?: (info: CarparkInfo) => void
+  onGetDirections?: (spot: ParkingSpot) => void
 }
 
-function getAvailabilityColor(availability?: CarparkAvailability): { bgClass: string; percentage: number } {
-  if (!availability || availability.total_lots === 0) {
-    return { bgClass: "bg-gray-500", percentage: 0 }
-  }
-
-  const percentage = (availability.lots_available / availability.total_lots) * 100
-
-  if (percentage >= 50) {
-    return { bgClass: "bg-green-500", percentage }
-  } else if (percentage >= 20) {
-    return { bgClass: "bg-amber-500", percentage }
-  } else {
-    return { bgClass: "bg-red-500", percentage }
-  }
-}
-
-export function ParkingSpotCard({ info, availability, variant, onClick, onBack, onGetDirections }: ParkingSpotCardProps) {
-  const { bgClass, percentage } = getAvailabilityColor(availability)
+export function ParkingSpotCard({ spot, variant, onClick, onBack, onGetDirections }: ParkingSpotCardProps) {
+  const bgClass = `bg-${spot.getAvailabilityColor()}-500`
+  const percentage = spot.getAvailabilityPercentage()
 
   if (variant === "compact") {
     return (
@@ -41,9 +24,9 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
       >
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <div className="font-semibold text-gray-800 text-sm">{info.address}</div>
-            <div className="text-xs text-gray-500 mb-2">Type: {ParkingType[info.type]}</div>
-            {availability ? (
+            <div className="font-semibold text-gray-800 text-sm">{spot.address}</div>
+            <div className="text-xs text-gray-500 mb-2">Type: {ParkingType[spot.type]}</div>
+            {spot.hasAvailabilityData() ? (
               <div className="mt-2">
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`w-4 h-4 rounded-full ${bgClass}`}></div>
@@ -52,8 +35,8 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
                   </span>
                 </div>
                 <div className="text-sm">
-                  <span className="font-bold text-gray-800">{availability.lots_available}</span>
-                  <span className="text-gray-600"> / {availability.total_lots} lots</span>
+                  <span className="font-bold text-gray-800">{spot.availableLots}</span>
+                  <span className="text-gray-600"> / {spot.totalLots} lots</span>
                 </div>
               </div>
             ) : (
@@ -80,14 +63,14 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
 
       <div className="p-4 space-y-4">
         <div>
-          <h3 className="text-xl font-bold mb-3">{info.address}</h3>
+          <h3 className="text-xl font-bold mb-3">{spot.address}</h3>
 
           <div className="flex items-center gap-2 text-sm mb-4">
             <span className="text-gray-600">Type:</span>
-            <span className="font-medium">{ParkingType[info.type]}</span>
+            <span className="font-medium">{ParkingType[spot.type]}</span>
           </div>
 
-          {availability ? (
+          {spot.hasAvailabilityData() ? (
             <div className="p-4 bg-gray-50 rounded-lg mb-4">
               <h4 className="font-semibold text-sm mb-3">Availability</h4>
               <div className="flex items-center gap-2 mb-2">
@@ -97,8 +80,8 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
                 </span>
               </div>
               <div className="text-base">
-                <span className="font-bold text-gray-800">{availability.lots_available}</span>
-                <span className="text-gray-600"> / {availability.total_lots} lots</span>
+                <span className="font-bold text-gray-800">{spot.availableLots}</span>
+                <span className="text-gray-600"> / {spot.totalLots} lots</span>
               </div>
             </div>
           ) : (
@@ -112,60 +95,52 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
           <div>
             <h4 className="font-semibold text-sm mb-2">Parking Rates</h4>
             <div className="space-y-2">
-              {info.short_term_parking && (
+              {spot.shortTermParking && (
                 <div className="text-sm">
                   <span className="font-medium text-gray-700">Short-term: </span>
-                  <span className="text-gray-600">{info.short_term_parking}</span>
+                  <span className="text-gray-600">{spot.shortTermParking}</span>
                 </div>
               )}
-              {info.free_parking && (
+              {spot.freeParking && (
                 <div className="text-sm">
                   <span className="font-medium text-gray-700">Free parking: </span>
-                  <span className="text-gray-600">{info.free_parking}</span>
+                  <span className="text-gray-600">{spot.freeParking}</span>
                 </div>
               )}
-              {info.night_parking && (
+              {spot.nightParking && (
                 <div className="text-sm">
                   <span className="font-medium text-gray-700">Night parking: </span>
-                  <span className="text-gray-600">{info.night_parking}</span>
+                  <span className="text-gray-600">{spot.nightParking}</span>
                 </div>
               )}
-              {!info.short_term_parking && !info.free_parking && !info.night_parking && (
+              {!spot.shortTermParking && !spot.freeParking && !spot.nightParking && (
                 <p className="text-sm text-gray-400 italic">No rate information available</p>
               )}
             </div>
           </div>
 
-          {(info.car_park_decks || info.gantry_height || info.car_park_basement) && (
+          {(spot.carParkDecks || spot.gantryHeight || spot.hasBasement) && (
             <div>
               <h4 className="font-semibold text-sm mb-2">Facility Information</h4>
               <div className="space-y-2">
-                {info.car_park_decks && (
+                {spot.carParkDecks && (
                   <div className="text-sm">
                     <span className="font-medium text-gray-700">Decks: </span>
                     <span className="text-gray-600">
-                      {info.car_park_decks === "SURFACE" ? "Surface" : info.car_park_decks}
+                      {spot.carParkDecks === "SURFACE" ? "Surface" : spot.carParkDecks}
                     </span>
                   </div>
                 )}
-                {info.gantry_height && (
+                {spot.gantryHeight && (
                   <div className="text-sm">
                     <span className="font-medium text-gray-700">Gantry height: </span>
-                    <span className="text-gray-600">{info.gantry_height}</span>
+                    <span className="text-gray-600">{spot.gantryHeight}</span>
                   </div>
                 )}
-                {info.car_park_basement && (
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-700">Basement: </span>
-                    <span className="text-gray-600">
-                      {info.car_park_basement.toUpperCase() === "Y" || info.car_park_basement.toUpperCase() === "YES"
-                        ? "Yes"
-                        : info.car_park_basement.toUpperCase() === "N" || info.car_park_basement.toUpperCase() === "NO"
-                        ? "No"
-                        : info.car_park_basement}
-                    </span>
-                  </div>
-                )}
+                <div className="text-sm">
+                  <span className="font-medium text-gray-700">Basement: </span>
+                  <span className="text-gray-600">{spot.hasBasement ? "Yes" : "No"}</span>
+                </div>
               </div>
             </div>
           )}
@@ -174,7 +149,7 @@ export function ParkingSpotCard({ info, availability, variant, onClick, onBack, 
         {onGetDirections && (
           <Button
             className="w-full"
-            onClick={() => onGetDirections(info)}
+            onClick={() => onGetDirections(spot)}
           >
             <Navigation className="w-4 h-4 mr-2" />
             Get Directions

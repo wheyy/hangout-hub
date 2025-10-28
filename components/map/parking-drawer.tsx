@@ -3,16 +3,16 @@
 import { ChevronLeft, ChevronRight, ParkingSquare, Filter } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 
-import { CarparkInfo, CarparkAvailability } from "@/lib/services/carpark-api";
+import { ParkingSpot } from "@/lib/models/parkingspot";
 import { ParkingSpotCard } from "./parking-spot-card";
 
 interface ParkingDrawerProps {
   isOpen: boolean
   onToggle: () => void
-  carparks?: Array<{ info: CarparkInfo; availability?: CarparkAvailability }>
-  onSelect?: (carpark: { info: CarparkInfo; availability?: CarparkAvailability }) => void
-  onGetDirections?: (carpark: { info: CarparkInfo; availability?: CarparkAvailability }) => void
-  selectedCarpark?: { info: CarparkInfo; availability?: CarparkAvailability } | null
+  carparks?: ParkingSpot[]
+  onSelect?: (spot: ParkingSpot) => void
+  onGetDirections?: (spot: ParkingSpot) => void
+  selectedCarpark?: ParkingSpot | null
   onBack?: () => void
 }
 
@@ -54,20 +54,10 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
     }
   }, [isFilterOpen])
 
-  // Calculate availability color for filtering
-  const getAvailabilityColorCategory = (availability?: CarparkAvailability): string => {
-    if (!availability || availability.total_lots === 0) return "gray"
-    
-    const percentage = (availability.lots_available / availability.total_lots) * 100
-    if (percentage >= 50) return "green"
-    if (percentage >= 20) return "amber"
-    return "red"
-  }
-
   // Filter carparks based on selected colors
-  const filteredCarparks = carparks?.filter(({ availability }) => {
+  const filteredCarparks = carparks?.filter((spot) => {
     if (selectedColors.length === 0) return true
-    const color = getAvailabilityColorCategory(availability)
+    const color = spot.getAvailabilityColor()
     return selectedColors.includes(color)
   })
   
@@ -94,8 +84,7 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
       <div className="h-full overflow-hidden flex flex-col">
         {selectedCarpark ? (
           <ParkingSpotCard
-            info={selectedCarpark.info}
-            availability={selectedCarpark.availability}
+            spot={selectedCarpark}
             variant="expanded"
             onBack={onBack}
             onGetDirections={onGetDirections}
@@ -153,13 +142,12 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
             <div className="flex-1 overflow-y-auto pt-3 pb-20">
               <div className="space-y-2 px-3">
                 {filteredCarparks && filteredCarparks.length > 0 ? (
-                  filteredCarparks.map(({ info, availability }) => (
+                  filteredCarparks.map((spot) => (
                     <ParkingSpotCard
-                      key={info.carpark_number}
-                      info={info}
-                      availability={availability}
+                      key={spot.id}
+                      spot={spot}
                       variant="compact"
-                      onClick={() => onSelect?.(info, availability)}
+                      onClick={() => onSelect?.(spot)}
                     />
                   ))
                 ) : (
