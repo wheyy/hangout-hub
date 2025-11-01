@@ -45,6 +45,8 @@ export function MapSearchBar({
   onUseCurrentLocation,
   onClearCoordinates
 }: SearchBarProps) {
+
+  //SearchBarController
   const [internalQuery, setInternalQuery] = useState("")
   const query = value !== undefined ? value : internalQuery
   const setQuery = onValueChange || setInternalQuery

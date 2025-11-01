@@ -350,6 +350,10 @@ export class Meetup {
         return new Map(this.memberStatuses)
     }
 
+    getMeetupId(): string {
+        return this.id
+    }
+
     async updateMemberStatus(userId: string, status: "traveling" | "arrived"): Promise<boolean> {
         const memberStatus = this.memberStatuses.get(userId)
         if (memberStatus) {

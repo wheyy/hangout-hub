@@ -17,7 +17,7 @@ import {
   ChevronUp,
 } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, use } from "react"
 import { CreateMeetupModal } from "@/components/meetup/create-meetup-modal"
 import { InvitationCard } from "@/components/meetup/invitation-card"
 import { useUserStore } from "@/hooks/user-store"

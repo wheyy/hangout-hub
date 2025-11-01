@@ -1,11 +1,3 @@
-// export interface User {
-//   id: string
-//   name: string
-//   email: string
-// }
-
-import { HangoutSpot } from "./hangoutspot"
-
 export interface Invitation {
   id: string
   meetupId: string
@@ -24,15 +16,44 @@ export interface Invitation {
   respondedAt?: string
 }
 
-// export interface Meetup {
-//   id: string
-//   title: string
-//   destination: string
-//   date: string
-//   time: string
-//   status: string
-//   memberCount: number
-//   creator: string
-//   creatorId: string
-//   members: string[] // Array of user IDs
+
+// public getId(): string {
+//   return this.id;
 // }
+
+// public setId(id: string): void {
+//   this.id = id;
+// }
+
+// public getMeetup(): Meetup {
+//   return this.meetup;
+// }
+
+// public setMeetup(meetup: Meetup): void {
+//   this.meetup = meetup;
+// }
+
+// public getSender(): User {
+//   return this.sender;
+// }
+
+// public setSender(sender: User): void {
+//   this.sender = sender;
+// }
+
+// public getRecipient(): User {
+//   return this.recipient;
+// }
+
+// public setRecipient(recipient: User): void {
+//   this.recipient = recipient;
+// }
+
+// public getStatus(): "pending" | "accepted" | "rejected" {
+//   return this.status;
+// }
+
+// public setStatus(status: "pending" | "accepted" | "rejected"): void {
+//   this.status = status;
+// }
+

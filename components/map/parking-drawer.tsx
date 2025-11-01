@@ -18,6 +18,7 @@ interface ParkingDrawerProps {
 
 
 export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirections, selectedCarpark, onBack }: ParkingDrawerProps) {
+  //ParkingSpotController
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [selectedColors, setSelectedColors] = useState<string[]>([])
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -71,6 +72,7 @@ export function ParkingDrawer({ isOpen, onToggle, carparks, onSelect, onGetDirec
     return selectedColors.includes(color)
   })
   
+  // ParkingSpotView
   return (
     <div
       data-drawer="parking"

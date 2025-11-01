@@ -22,6 +22,7 @@ interface MeetupPageProps {
 
 export default function MeetupPage({ params }: MeetupPageProps) {
   // MeetupController
+  // useUserStore.getState().initializeUser() // Ensure user is initialized
   const [activeTab, setActiveTab] = useState<"map" | "tracking">("tracking")
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
