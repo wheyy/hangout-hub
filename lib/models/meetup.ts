@@ -13,9 +13,6 @@ import {
     updateDoc
   } from "firebase/firestore"; 
 
-import { useUserStore } from "@/hooks/user-store";
-import { use } from "react";
-
 export interface MemberStatus {
     userId: string
     status: "traveling" | "arrived"
@@ -46,65 +43,6 @@ export class Meetup {
         })
         creator.addMeetup(this)
         console.log(`Meetup ${this.title} created by ${this.creator.name}`)
-    }
-
-    // ✅ Create a new meetup and store to Firebase w auto-generated ID
-    static async create(
-        title: string,
-        dateTime: Date,
-        destination: HangoutSpot,
-        creator: User
-    ): Promise<Meetup> {
-        try {
-            // Generate a new document reference (with auto-generated ID)
-            const meetupRef = doc(collection(db, "meetups"));
-
-            // Create the Meetup object with Firebase ID
-            const meetup = new Meetup(
-                meetupRef.id,
-                title,
-                dateTime,
-                destination,
-                creator
-            );
-
-            // Save to Firestore with destination as object
-            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
-            meetup.memberStatuses.forEach((status, userId) => {
-                memberStatusesObj[userId] = {
-                    status: status.status,
-                    locationSharingEnabled: status.locationSharingEnabled,
-                    arrivedAt: status.arrivedAt,
-                    joinedAt: status.joinedAt
-                }
-            })
-
-            await setDoc(meetupRef, {
-                title: meetup.title,
-                dateTime: meetup.dateTime,
-                destination: {
-                    id: meetup.destination.id,
-                    name: meetup.destination.name,
-                    category: meetup.destination.category,
-                    priceRange: meetup.destination.priceRange,
-                    rating: meetup.destination.rating,
-                    reviewCount: meetup.destination.reviewCount,
-                    coordinates: meetup.destination.coordinates,
-                    address: meetup.destination.address,
-                    thumbnailUrl: meetup.destination.thumbnailUrl,
-                    openingHours: meetup.destination.openingHours,
-                },
-                creatorId: meetup.creator.id,
-                memberIds: meetup.getMemberIds(),
-                members: memberStatusesObj,
-            });
-
-            console.log("Meetup created with ID:", meetupRef.id);
-            return meetup;
-        } catch (e) {
-            console.error("Error creating meetup:", e);
-            throw e;
-        }
     }
 
     // ✅ Load a single meetup from Firestore
