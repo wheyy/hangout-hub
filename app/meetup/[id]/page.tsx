@@ -143,15 +143,17 @@ export default function MeetupPage({ params }: MeetupPageProps) {
         </div>
 
         {/* Desktop: 2-column grid layout */}
-        <div className={meetup.getStatus() == "active" ?  "max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-2 h-full overflow-hidden" : "max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-1 h-full overflow-hidden"}>
-          <div className="h-full overflow-y-auto p-4 border-r">
-            <GroupManagement
-              cur_meetup={meetup}
-              isCreator={isCreator}
-              canInvite={canInvite}
-              onInvite={() => setIsInviteModalOpen(true)}
-              onDelete={() => setIsDeleteModalOpen(true)}
-            />
+        <div className={meetup.getStatus() == "active" ?  "max-[650px]:hidden min-[651px]:grid min-[651px]:grid-cols-2 h-full overflow-hidden" : "max-[650px]:hidden min-[651px]:block h-full overflow-hidden"}>
+          <div className={meetup.getStatus() == "active" ? "h-full overflow-y-auto p-4 border-r" : "h-full overflow-y-auto p-4"}>
+            <div className={meetup.getStatus() == "active" ? "" : "max-w-[1000px] mx-auto"}>
+              <GroupManagement
+                cur_meetup={meetup}
+                isCreator={isCreator}
+                canInvite={canInvite}
+                onInvite={() => setIsInviteModalOpen(true)}
+                onDelete={() => setIsDeleteModalOpen(true)}
+              />
+            </div>
           </div>
           {meetup.getStatus() == "active" ? <div className="h-full overflow-hidden">
             <LiveMapView meetup={meetup} />
