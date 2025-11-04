@@ -1,6 +1,7 @@
+import { db } from "../services/db/db-factory";
 import { HangoutSpot } from "./hangoutspot"
 import { User } from "./user"
-import { db } from "@/lib/config/firebase";
+import { firestoreDB } from "@/lib/config/firebase";
 import { 
     collection, 
     doc, 
@@ -47,98 +48,7 @@ export class Meetup {
 
     // ✅ Load a single meetup from Firestore
     static async load(meetupId: string): Promise<Meetup | null> {
-        try {
-            const meetupDoc = await getDoc(doc(db, "meetups", meetupId));
-            
-            if (!meetupDoc.exists()) {
-                console.log("Meetup not found");
-                return null;
-            }
-            
-            const data = meetupDoc.data();
-            const creator = await User.loadFromFirestore(data.creatorId);
-
-            // ✅ Parse dateTime carefully
-            let dateTime: Date;
-            
-            if (data.dateTime instanceof Date) {
-            // Already a Date object
-            dateTime = data.dateTime;
-            } else if (typeof data.dateTime === 'string') {
-            // ISO string
-            dateTime = new Date(data.dateTime);
-            } else if (data.dateTime?.seconds) {
-            // Firestore Timestamp
-            dateTime = new Date(data.dateTime.seconds * 1000);
-            } else {
-            console.error(`❌ Invalid dateTime format:`, data.dateTime);
-            return null;
-            }
-            
-            // ✅ Validate the date
-            if (isNaN(dateTime.getTime())) {
-            console.error(`❌ Invalid date after parsing:`, data.dateTime);
-            throw new Error("Invalid date format");
-            }
-            
-            console.log("✅ Parsed dateTime:", dateTime);
-
-            if (!creator) {
-                console.error(`❌ Creator ${data.creatorId} not found`);
-                throw new Error("Creator not found");
-            }
-
-            // Parse destination as HangoutSpot
-            const destinationData = data.destination
-            const destination = new HangoutSpot(
-                destinationData.id,
-                destinationData.name,
-                destinationData.category,
-                destinationData.priceRange,
-                destinationData.rating,
-                destinationData.reviewCount,
-                destinationData.coordinates,
-                destinationData.address,
-                destinationData.thumbnailUrl,
-                destinationData.openingHours
-            )
-
-            const meetup = new Meetup(
-                meetupDoc.id,
-                data.title,
-                dateTime,
-                destination,
-                creator!
-            );
-            
-            // Load member statuses
-            if (data.members) {
-                Object.entries(data.members).forEach(([userId, statusData]: [string, any]) => {
-                    meetup.memberStatuses.set(userId, {
-                        userId,
-                        status: statusData.status || "traveling",
-                        locationSharingEnabled: statusData.locationSharingEnabled ?? true,
-                        arrivedAt: statusData.arrivedAt || null,
-                        joinedAt: statusData.joinedAt
-                    })
-                })
-            }
-            
-            // Fetch users from user db
-            data.memberIds.forEach(async (memberId: string) => {
-                if (memberId !== meetup.creator.id) {
-                    const member = await User.loadFromFirestore(memberId);
-                    if (member) {
-                        meetup.addMemberWithoutStatus(member);
-                    }
-                }
-            });
-            
-            return meetup;
-        } catch (e) {
-            console.error("Error loading meetup:", e);
-            return null;
-        }
+        return db.getMeetupById(meetupId)
     }
 
     // ✅ Update meetup in Firestore
@@ -156,7 +66,7 @@ export class Meetup {
 
             console.log("Updating meetup in Firestore:", this.id);
             console.log("Members:", this.getMemberIds());
-            await updateDoc(doc(db, "meetups", this.id), {
+            await updateDoc(doc(firestoreDB, "meetups", this.id), {
                 title: this.title,
                 dateTime: this.dateTime.toISOString(),
                 destination: {
@@ -195,7 +105,7 @@ export class Meetup {
             this.members = [];
             
             // Delete from Firestore
-            await deleteDoc(doc(db, "meetups", this.id));
+            await deleteDoc(doc(firestoreDB, "meetups", this.id));
             
             console.log(`Meetup ${this.title} deleted.`);
             return true;
@@ -288,6 +198,11 @@ export class Meetup {
         return new Map(this.memberStatuses)
     }
 
+    async setMemberStatus(userId: string, status: MemberStatus): Promise<boolean> {
+        this.memberStatuses.set(userId, status)
+        return await this.save()
+    }
+
     async updateMemberStatus(userId: string, status: "traveling" | "arrived"): Promise<boolean> {
         const memberStatus = this.memberStatuses.get(userId)
         if (memberStatus) {
@@ -314,6 +229,26 @@ export class Meetup {
         return false
     }
 
+    async updateMemberArrivalTime(userId: string, arrivedAt: Date | null): Promise<boolean> {
+        const memberStatus = this.memberStatuses.get(userId)
+        if (memberStatus) {
+            memberStatus.arrivedAt = arrivedAt ? arrivedAt.toISOString() : null
+            this.memberStatuses.set(userId, memberStatus)
+            return await this.save()
+        }
+        return false
+    }
+
+    async updateMemberJoinedTime(userId: string, joinedAt: Date): Promise<boolean> {
+        const memberStatus = this.memberStatuses.get(userId)
+        if (memberStatus) {
+            memberStatus.joinedAt = joinedAt.toISOString()
+            this.memberStatuses.set(userId, memberStatus)
+            return await this.save()
+        }
+        return false
+    }
+
     allMembersArrived(): boolean {
         return Array.from(this.memberStatuses.values()).every(status => status.status === "arrived")
     }
@@ -321,6 +256,7 @@ export class Meetup {
     getArrivedMemberCount(): number {
         return Array.from(this.memberStatuses.values()).filter(status => status.status === "arrived").length
     }
+
 
     updateDetails(newTitle: string, newDateTime: Date, newDestination: HangoutSpot): boolean {
         if (this.updateTitle(newTitle) && this.updateDateTime(newDateTime) && this.updateDestination(newDestination)) {
@@ -354,7 +290,7 @@ export class Meetup {
 
     async endMeetup(): Promise<boolean> {
         try {
-        const meetupRef = doc(db, "meetups", this.id)
+        const meetupRef = doc(firestoreDB, "meetups", this.id)
         await updateDoc(meetupRef, {
             status: "ended",
             endedAt: new Date(),

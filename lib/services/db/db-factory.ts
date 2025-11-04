@@ -32,3 +32,5 @@ export class DBServiceFactory {
 	}
 
 }
+
+export const db = DBServiceFactory.getDatastore(process.env.NEXT_PUBLIC_DB_SERVICE || DBServiceType.MOCK);

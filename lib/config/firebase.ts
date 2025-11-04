@@ -19,6 +19,6 @@ setPersistence(auth, browserLocalPersistence).catch(() => {
   // Fallback to default persistence
 })
 
-const db = getFirestore(app)
+const firestoreDB = getFirestore(app)
 
-export { app, auth, db }
+export { app, auth, firestoreDB }

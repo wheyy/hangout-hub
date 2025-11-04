@@ -15,7 +15,7 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
-import { db, auth } from "@/lib/config/firebase";
+import { firestoreDB, auth } from "@/lib/config/firebase";
 import { Invitation } from "@/lib/models/invitation";
 import { Meetup } from "../models/meetup";
 import { User } from "../models/user";
@@ -26,7 +26,7 @@ import { useUserStore } from "@/hooks/user-store";
  * Returns { id, data } or null.
  */
 export async function findUserByEmail(email: string) {
-  const q = query(collection(db, "users"), where("email", "==", email));
+  const q = query(collection(firestoreDB, "users"), where("email", "==", email));
   const snap = await getDocs(q);
   if (snap.empty) return null;
   const docSnap = snap.docs[0];
@@ -69,7 +69,7 @@ export async function sendInvitation({
   const recipientName = (found.data as any).name || "";
 
   // Create a consistent docRef id for all writes
-  const sentRef = doc(collection(db, "users", senderId, "invitationsSent"));
+  const sentRef = doc(collection(firestoreDB, "users", senderId, "invitationsSent"));
   const inviteId = sentRef.id;
 
   const invitation: Omit<Invitation, "id"> & { sentAt: any } = {
@@ -88,10 +88,10 @@ export async function sendInvitation({
   };
 
   // Batch write to ensure both subcollections are written
-  const batch = writeBatch(db);
-  const senderInvRef = doc(db, "users", senderId, "invitationsSent", inviteId);
-  const recipientInvRef = doc(db, "users", recipientId, "invitationsReceived", inviteId);
-  const topLevelRef = doc(db, "invitations", inviteId);
+  const batch = writeBatch(firestoreDB);
+  const senderInvRef = doc(firestoreDB, "users", senderId, "invitationsSent", inviteId);
+  const recipientInvRef = doc(firestoreDB, "users", recipientId, "invitationsReceived", inviteId);
+  const topLevelRef = doc(firestoreDB, "invitations", inviteId);
 
   batch.set(senderInvRef, { id: inviteId, ...invitation });
   batch.set(recipientInvRef, { id: inviteId, ...invitation });
@@ -107,8 +107,8 @@ export async function sendInvitation({
  */
 export async function fetchInvitations(userId: string): Promise<Invitation[]> {
   try {
-    const receivedSnap = await getDocs(collection(db, "users", userId, "invitationsReceived"));
-    const sentSnap = await getDocs(collection(db, "users", userId, "invitationsSent"));
+    const receivedSnap = await getDocs(collection(firestoreDB, "users", userId, "invitationsReceived"));
+    const sentSnap = await getDocs(collection(firestoreDB, "users", userId, "invitationsSent"));
 
     const normalize = (d: any) => {
       // d may contain sentAt as Timestamp
@@ -147,7 +147,7 @@ export async function acceptInvitation({
     console.log("🔍 Match?", auth.currentUser?.uid === recipientId);
 
     // Load recipient invitation doc
-    const recRef = doc(db, "users", recipientId, "invitationsReceived", invitationId);
+    const recRef = doc(firestoreDB, "users", recipientId, "invitationsReceived", invitationId);
     const recSnap = await getDoc(recRef);
     if (!recSnap.exists()) {
       throw new Error("Invitation not found");
@@ -159,7 +159,7 @@ export async function acceptInvitation({
     console.log("🔍 Invitation data:", { meetupId, senderId });
 
     // batch updates for consistency
-    const batch = writeBatch(db);
+    const batch = writeBatch(firestoreDB);
 
     // update recipient received invite
     batch.update(recRef, {
@@ -168,14 +168,14 @@ export async function acceptInvitation({
     });
 
     // update sender's copy
-    const senderRef = doc(db, "users", senderId, "invitationsSent", invitationId);
+    const senderRef = doc(firestoreDB, "users", senderId, "invitationsSent", invitationId);
     batch.update(senderRef, {
       status: "accepted",
       respondedAt: serverTimestamp(),
     });
 
     // update top-level invitation
-    const topRef = doc(db, "invitations", invitationId);
+    const topRef = doc(firestoreDB, "invitations", invitationId);
     batch.update(topRef, {
       status: "accepted",
       respondedAt: serverTimestamp(),
@@ -192,7 +192,7 @@ export async function acceptInvitation({
       useUserStore.getState().initializeUser()
 
     // // add recipient to meetup member arrays and members map
-    // const meetupRef = doc(db, "meetups", meetupId);
+    // const meetupRef = doc(firestoreDB, "meetups", meetupId);
     // batch.update(meetupRef, {
     //   memberIds: arrayUnion(recipientId),
     //   [`members.${recipientId}`]: {
@@ -203,7 +203,7 @@ export async function acceptInvitation({
     // });
 
     // // add meetup id to user's meetupIds
-    // const userRef = doc(db, "users", recipientId);
+    // const userRef = doc(firestoreDB, "users", recipientId);
     // batch.update(userRef, {
     //   meetupIds: arrayUnion(meetupId),
     // });
@@ -280,16 +280,16 @@ export async function acceptInvitation({
  * - mark as rejected in received, sent, top-level
  */
 export async function rejectInvitation({ recipientId, invitationId }: { recipientId: string; invitationId: string; }) {
-  const recRef = doc(db, "users", recipientId, "invitationsReceived", invitationId);
+  const recRef = doc(firestoreDB, "users", recipientId, "invitationsReceived", invitationId);
   const recSnap = await getDoc(recRef);
   if (!recSnap.exists()) throw new Error("Invitation not found");
 
   const inv = recSnap.data() as any;
   const senderId = inv.senderId;
-  const topRef = doc(db, "invitations", invitationId);
-  const senderRef = doc(db, "users", senderId, "invitationsSent", invitationId);
+  const topRef = doc(firestoreDB, "invitations", invitationId);
+  const senderRef = doc(firestoreDB, "users", senderId, "invitationsSent", invitationId);
 
-  const batch = writeBatch(db);
+  const batch = writeBatch(firestoreDB);
   batch.update(recRef, { status: "rejected", respondedAt: serverTimestamp() });
   batch.update(senderRef, { status: "rejected", respondedAt: serverTimestamp() });
   batch.update(topRef, { status: "rejected", respondedAt: serverTimestamp() });
@@ -305,10 +305,10 @@ export async function rejectInvitation({ recipientId, invitationId }: { recipien
 export async function deleteInvitation({ userId, invitationId }: { userId: string; invitationId: string; }) {
   // Attempt to delete from both subcollections and top-level (safe with Promise.allSettled)
   const promises = [
-    deleteDoc(doc(db, "users", userId, "invitationsReceived", invitationId)).catch(() => null),
-    deleteDoc(doc(db, "users", userId, "invitationsSent", invitationId)).catch(() => null),
+    deleteDoc(doc(firestoreDB, "users", userId, "invitationsReceived", invitationId)).catch(() => null),
+    deleteDoc(doc(firestoreDB, "users", userId, "invitationsSent", invitationId)).catch(() => null),
     // optionally delete top-level if desired:
-    // deleteDoc(doc(db, "invitations", invitationId)).catch(()=>null),
+    // deleteDoc(doc(firestoreDB, "invitations", invitationId)).catch(()=>null),
   ];
   await Promise.all(promises);
   return true;

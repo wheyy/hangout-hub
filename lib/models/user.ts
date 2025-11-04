@@ -1,5 +1,5 @@
 import { Meetup } from "./meetup"
-import { DBServiceFactory, DBServiceType } from "@/lib/services/db/db-factory"
+import { db } from "@/lib/services/db/db-factory"
 
 // Firestore user document shape
 export interface UserDoc {
@@ -54,7 +54,7 @@ export class User {
     }
 
     async removeAccount(): Promise<void> {
-        const dbi = DBServiceFactory.getDatastore(DBServiceType.FIRESTORE)
+        const dbi = db
         await dbi.deleteUser(this.id)
     }
     async addMeetup(meetup: Meetup): Promise<void> {
@@ -91,7 +91,7 @@ export class User {
 
     // Save current fields to Firestore (replaces meetupIds with current in-memory list)
     async save(): Promise<void> {
-        const dbi = DBServiceFactory.getDatastore(DBServiceType.FIRESTORE)
+        const dbi = db
         await dbi.saveUser(this)
     }
 
@@ -121,20 +121,20 @@ export class User {
         currentLocation: [longitude: number, latitude: number] | null,
     }): Promise<User> {
         const user = new User(args.id, args.name, args.email, args.currentLocation ?? null)
-        const dbi = DBServiceFactory.getDatastore(DBServiceType.FIRESTORE)
+        const dbi = db
         await dbi.createUser(user)
         return user
     }
 
     // without meetups loaded
     static async loadFromFirestore(id: string): Promise<User | null> {
-        const dbi = DBServiceFactory.getDatastore(DBServiceType.FIRESTORE)
+        const dbi = db
         return await dbi.getUserById(id)
     }
 
     // with meetups loaded
     static async loadFromFirestoreFull(id: string): Promise<User | null> {
-        const dbi = DBServiceFactory.getDatastore(DBServiceType.FIRESTORE)
+        const dbi = db
         return await dbi.getUserByIdFull(id)
     }
     

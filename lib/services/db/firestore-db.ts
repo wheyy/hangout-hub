@@ -11,9 +11,9 @@ import {
     getDocs,
     DocumentData
   } from "firebase/firestore";
-  import { db } from "@/lib/config/firebase";
+  import { firestoreDB } from "@/lib/config/firebase";
   import { DBInterface } from "./db-service";
-  import { Meetup } from "@/lib/models/meetup";
+  import { Meetup, MemberStatus } from "@/lib/models/meetup";
   import { User } from "@/lib/models/user";
   import { HangoutSpot } from "@/lib/models/hangoutspot";
   
@@ -37,7 +37,7 @@ import {
     ): Promise<Meetup> {
         try {
             // Generate a new document reference (with auto-generated ID)
-            const meetupRef = doc(collection(db, "meetups"));
+            const meetupRef = doc(collection(firestoreDB, "meetups"));
 
             // Create the Meetup object with Firebase ID
             const meetup = new Meetup(
@@ -48,7 +48,6 @@ import {
                 creator
             );
 
-            // Save to Firestore with destination as object
       // Members statuses are managed by Meetup model; store only memberIds here
 
             await setDoc(meetupRef, {
@@ -68,7 +67,7 @@ import {
                 },
                 creatorId: meetup.creator.id,
                 memberIds: meetup.getMemberIds(),
-        // members are not persisted here; only memberIds
+        // TODO: members are not persisted here; only memberIds
             });
 
             console.log("Meetup created with ID:", meetupRef.id);
@@ -80,20 +79,105 @@ import {
     }
     
     async getMeetupById(id: string): Promise<Meetup | null> {
-      try {
-        // Delegate to domain loader to construct a proper Meetup instance
-        return await Meetup.load(id)
-      } catch (error) {
-        console.error("[FIRESTORE] Error getting meetup:", error)
-        throw error
-      }
+        try {
+            const meetupDoc = await getDoc(doc(firestoreDB, "meetups", id));
+            
+            if (!meetupDoc.exists()) {
+                console.log("Meetup not found");
+                return null;
+            }
+            
+            const data = meetupDoc.data();
+            const creator = await User.loadFromFirestore(data.creatorId);
+
+            // ✅ Parse dateTime carefully
+            let dateTime: Date;
+            
+            if (data.dateTime instanceof Date) {
+            // Already a Date object
+            dateTime = data.dateTime;
+            } else if (typeof data.dateTime === 'string') {
+            // ISO string
+            dateTime = new Date(data.dateTime);
+            } else if (data.dateTime?.seconds) {
+            // Firestore Timestamp
+            dateTime = new Date(data.dateTime.seconds * 1000);
+            } else {
+            console.error(`❌ Invalid dateTime format:`, data.dateTime);
+            return null;
+            }
+            
+            // ✅ Validate the date
+            if (isNaN(dateTime.getTime())) {
+            console.error(`❌ Invalid date after parsing:`, data.dateTime);
+            throw new Error("Invalid date format");
+            }
+            
+            console.log("✅ Parsed dateTime:", dateTime);
+
+            if (!creator) {
+                console.error(`❌ Creator ${data.creatorId} not found`);
+                throw new Error("Creator not found");
+            }
+
+            // Parse destination as HangoutSpot
+            const destinationData = data.destination
+            const destination = new HangoutSpot(
+                destinationData.id,
+                destinationData.name,
+                destinationData.category,
+                destinationData.priceRange,
+                destinationData.rating,
+                destinationData.reviewCount,
+                destinationData.coordinates,
+                destinationData.address,
+                destinationData.thumbnailUrl,
+                destinationData.openingHours
+            )
+
+            const meetup = new Meetup(
+                meetupDoc.id,
+                data.title,
+                dateTime,
+                destination,
+                creator!
+            );
+            
+            // Load member statuses
+            if (data.members) {
+                Object.entries(data.members).forEach(([userId, statusData]: [string, any]) => {
+                    meetup.setMemberStatus(userId, {
+                        userId,
+                        status: statusData.status || "traveling",
+                        locationSharingEnabled: statusData.locationSharingEnabled ?? true,
+                        arrivedAt: statusData.arrivedAt || null,
+                        joinedAt: statusData.joinedAt
+                    })
+                })
+            }
+            
+            // Fetch users from user db
+            data.memberIds.forEach(async (memberId: string) => {
+                if (memberId !== meetup.creator.id) {
+                    const member = await User.loadFromFirestore(memberId);
+                    if (member) {
+                        meetup.addMemberWithoutStatus(member);
+                    }
+                }
+            });
+            
+            return meetup;
+        } catch (e) {
+            console.error(" [FIRESTORE] Error loading meetup:", e);
+            return null;
+        }
     }
   
     async saveMeetup(meetup: Meetup): Promise<boolean> {
       try {
         console.log("[FIRESTORE] Saving meetup:", meetup.id);
-
-        const meetupRef = doc(db, "meetups", meetup.id);
+        
+        const meetupRef = await doc(firestoreDB, "meetups", meetup.id);
         await setDoc(meetupRef, {
           title: meetup.title,
           dateTime: meetup.dateTime,
@@ -123,7 +207,7 @@ import {
     async deleteMeetup(id: string): Promise<boolean> {
       try {
         console.log("[FIRESTORE] Deleting meetup:", id);
-        const meetupRef = doc(db, "meetups", id);
+        const meetupRef = doc(firestoreDB, "meetups", id);
         await deleteDoc(meetupRef);
         return true;
       } catch (error) {
@@ -134,7 +218,7 @@ import {
   
     async getMeetupDoc(id: string): Promise<DocumentData | null> {
       try {
-        const meetupRef = doc(db, "meetups", id);
+        const meetupRef = doc(firestoreDB, "meetups", id);
         const meetupSnap = await getDoc(meetupRef);
         return meetupSnap.exists() ? meetupSnap.data() : null;
       } catch (error) {
@@ -147,7 +231,7 @@ import {
     async createUser(user: User): Promise<void> {
       try {
         console.log("[FIRESTORE] Creating user:", user.id);
-        const userRef = doc(db, "users", user.id);
+        const userRef = doc(firestoreDB, "users", user.id);
         await setDoc(userRef, {
           name: user.name,
           email: user.email,
@@ -165,7 +249,7 @@ import {
     async getUserById(id: string): Promise<User | null> {
       try {
         console.log("[FIRESTORE] Getting user:", id);
-        const userRef = doc(db, "users", id);
+        const userRef = doc(firestoreDB, "users", id);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) return null;
         const data = userSnap.data();
@@ -175,6 +259,21 @@ import {
           data.email,
           data.currentLocation || null
         );
+        
+        // Load meetups if meetupIds exist
+        if (data.meetupIds && data.meetupIds.length > 0) {
+          for (const meetupId of data.meetupIds) {
+            try {
+              const meetup = await this.getMeetupById(meetupId);
+              if (meetup) {
+                (user as any).meetups.push(meetup);
+              }
+            } catch (error) {
+              console.error(`[FIRESTORE] Failed to load meetup ${meetupId}:`, error);
+            }
+          }
+        }
+        
         return user;
       } catch (error) {
         console.error("[FIRESTORE] Error getting user:", error);
@@ -185,7 +284,7 @@ import {
     async getUserByIdFull(id: string): Promise<User | null> {
       try {
         console.log("[FIRESTORE] Getting full user:", id);
-        const userRef = doc(db, "users", id);
+        const userRef = doc(firestoreDB, "users", id);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) return null;
         const data = userSnap.data();
@@ -218,7 +317,7 @@ import {
     async saveUser(user: User): Promise<void> {
       try {
         console.log("[FIRESTORE] Saving user:", user.id);
-        const userRef = doc(db, "users", user.id);
+        const userRef = doc(firestoreDB, "users", user.id);
         await setDoc(userRef, {
           name: user.name,
           email: user.email,
@@ -235,7 +334,7 @@ import {
     async deleteUser(id: string): Promise<void> {
       try {
         console.log("[FIRESTORE] Deleting user:", id);
-        const userRef = doc(db, "users", id);
+        const userRef = doc(firestoreDB, "users", id);
         await deleteDoc(userRef);
       } catch (error) {
         console.error("[FIRESTORE] Error deleting user:", error);
@@ -245,7 +344,7 @@ import {
   
     async getUserDoc(id: string): Promise<DocumentData | null> {
       try {
-        const userRef = doc(db, "users", id);
+        const userRef = doc(firestoreDB, "users", id);
         const userSnap = await getDoc(userRef);
         return userSnap.exists() ? userSnap.data() : null;
       } catch (error) {
@@ -259,7 +358,7 @@ import {
     async getMeetupsByUserId(userId: string): Promise<Meetup[]> {
       try {
         console.log("[FIRESTORE] Getting meetups for user:", userId);
-        const meetupsRef = collection(db, "meetups");
+        const meetupsRef = collection(firestoreDB, "meetups");
         const q = query(meetupsRef, where("memberIds", "array-contains", userId));
         const querySnapshot = await getDocs(q);
         
