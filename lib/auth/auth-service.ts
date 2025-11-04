@@ -1,4 +1,4 @@
-import { auth, db } from "@/lib/config/firebase"
+import { auth } from "@/lib/config/firebase"
 import { User as AppUser } from "@/lib/models/user"
 import {
   createUserWithEmailAndPassword,
@@ -14,32 +14,9 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification as fbSendEmailVerification,
 } from "firebase/auth"
-import { deleteDoc } from "firebase/firestore"
-import { doc, serverTimestamp, setDoc } from "firebase/firestore"
 // Note: Do NOT import user store here to avoid circular dependency.
 
-export interface AuthUser {
-  id: string
-  email: string
-  name: string
-  avatar_url?: string
-}
-
-export interface AuthState {
-  user: AuthUser | null
-  loading: boolean
-  error: string | null
-}
-
-function toAuthUser(user: User | null): AuthUser | null {
-  if (!user) return null
-  return {
-    id: user.uid,
-    email: user.email || "",
-    name: user.displayName || user.email?.split("@")[0] || "",
-    avatar_url: user.photoURL || undefined,
-  }
-}
+// Deprecated local view-models removed; controller now returns domain User
 
 function mapFirebaseError(code: string): string {
   switch (code) {
@@ -65,14 +42,14 @@ function mapFirebaseError(code: string): string {
   }
 }
 
-export const authService = {
-  async signUp(email: string, password: string, name: string): Promise<AuthUser> {
+export const authController = {
+  async signUp(email: string, password: string, name: string): Promise<AppUser> {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       // Set display name
       await updateProfile(cred.user, { displayName: name })
       // Create user document using our model
-      await AppUser.createInFirestore({
+      const u = await AppUser.createInFirestore({
         id: cred.user.uid,
         name,
         email: cred.user.email ?? email,
@@ -89,19 +66,14 @@ export const authService = {
         // ignore failures to send verification email
       }
       await fbSignOut(auth)
-      // Return unified shape
-      return {
-        id: cred.user.uid,
-        email: cred.user.email ?? email,
-        name,
-        avatar_url: cred.user.photoURL || undefined,
-      }
+      // Return domain user (note: user will be signed out after this)
+      return u
     } catch (e: any) {
       throw new Error(mapFirebaseError(e?.code || ""))
     }
   },
 
-  async signIn(email: string, password: string): Promise<AuthUser> {
+  async signIn(email: string, password: string): Promise<AppUser> {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
       // Block unverified emails
@@ -112,12 +84,7 @@ export const authService = {
       // Load user document; if missing, raise an error
       const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
       if (!u) throw new Error("User profile not found.")
-      return {
-        id: cred.user.uid,
-        email: u.email,
-        name: u.name,
-        avatar_url: cred.user.photoURL || undefined,
-      }
+      return u
     } catch (e: any) {
       // Preserve explicit error messages (e.g., verification required)
       if (e && typeof e === "object" && "code" in e && e.code) {
@@ -138,45 +105,42 @@ export const authService = {
     }
   },
 
-  async getCurrentUser(): Promise<AuthUser | null> {
+  async getCurrentUser(): Promise<AppUser | null> {
     // If already available, try to enrich from user doc
     const cur = auth.currentUser
     if (cur) {
       try {
         const u = await AppUser.loadFromFirestore(cur.uid)
         if (!u) return null
-        return { id: cur.uid, email: u.email, name: u.name, avatar_url: cur.photoURL || undefined }
+        return u
       } catch {
-        // Fallback to auth-only mapping
-        return toAuthUser(cur)
+        return null
       }
     }
 
     // Await one-time auth state, then load user doc
-    return new Promise<AuthUser | null>((resolve) => {
+    return new Promise<AppUser | null>((resolve) => {
       const unsub = onAuthStateChanged(auth, async (user) => {
         unsub()
         if (!user) return resolve(null)
         try {
           const u = await AppUser.loadFromFirestore(user.uid)
           if (!u) return resolve(null)
-          resolve({ id: user.uid, email: u.email, name: u.name, avatar_url: user.photoURL || undefined })
+          resolve(u)
         } catch {
-          resolve(toAuthUser(user))
+          resolve(null)
         }
       })
     })
   },
 
-  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const user = auth.currentUser
-    if (!user || !user.email) {
-      throw new Error("Not authenticated.")
-    }
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const fbUser = auth.currentUser
+    if (!fbUser || !fbUser.email) throw new Error("Not authenticated.")
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword)
-      await reauthenticateWithCredential(user, credential)
-      await fbUpdatePassword(user, newPassword)
+      const credential = EmailAuthProvider.credential(fbUser.email, currentPassword)
+      await reauthenticateWithCredential(fbUser, credential)
+      await fbUpdatePassword(fbUser, newPassword)
     } catch (e: any) {
       const code = e?.code || ""
       if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
@@ -186,27 +150,30 @@ export const authService = {
     }
   },
 
-  async updateName(newName: string): Promise<void> {
-    const user = auth.currentUser
-    if (!user) throw new Error("Not authenticated.")
+  async changeDisplayName(newName: string): Promise<void> {
+    const fbUser = auth.currentUser
+    if (!fbUser) throw new Error("Not authenticated.")
     const name = newName?.trim()
     if (!name) throw new Error("Name cannot be empty.")
-    await updateProfile(user, { displayName: name })
-    await AppUser.updateFields(user.uid, { name })
+    await updateProfile(fbUser, { displayName: name })
+    const u = await AppUser.loadFromFirestore(fbUser.uid)
+    if (!u) throw new Error("User profile not found.")
+    await u.updateName(name)
   },
 
     async deleteAccount(): Promise<void> {
-      const user = auth.currentUser
-      if (!user) throw new Error("Not authenticated.")
-      const uid = user.uid
+      const fbUser = auth.currentUser
+      if (!fbUser) throw new Error("Not authenticated.")
+      const u = await AppUser.loadFromFirestore(fbUser.uid)
+      if (!u) throw new Error("User profile not found.")
+      // Remove user doc via User (DB layer encapsulated) then delete auth user
       try {
-        // Attempt to delete Firestore user document first
-        await deleteDoc(doc(db, "users", uid))
-      } catch (e) {
-        // Ignore doc deletion errors; proceed to delete auth user
+        await u.removeAccount()
+      } catch {
+        // ignore Firestore deletion issues and still attempt to delete auth user
       }
       try {
-        await fbDeleteUser(user)
+        await fbDeleteUser(fbUser)
       } catch (e: any) {
         const code = e?.code || ""
         if (code === "auth/requires-recent-login") {

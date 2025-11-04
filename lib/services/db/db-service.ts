@@ -18,6 +18,8 @@ export interface DBInterface {
   
   // User operations
   getUserById(id: string): Promise<User | null>;
+  getUserByIdFull(id: string): Promise<User | null>;
+  createUser(user: User): Promise<void>;
   saveUser(user: User): Promise<void>;
   deleteUser(id: string): Promise<void>;
   getUserDoc(id: string): Promise<DocumentData | null>;

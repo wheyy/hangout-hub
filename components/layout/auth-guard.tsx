@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/auth/auth-service"
+import { authController } from "@/lib/auth/auth-service"
 import { MapPin } from "lucide-react"
 
 interface AuthGuardProps {
@@ -20,7 +20,7 @@ export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const user = await authService.getCurrentUser()
+  const user = await authController.getCurrentUser()
         setIsAuthenticated(!!user)
 
         if (requireAuth && !user) {

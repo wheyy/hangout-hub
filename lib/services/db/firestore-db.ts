@@ -22,6 +22,11 @@ import {
    */
   export class FirestoreDBService implements DBInterface {
     // ===== MEETUP OPERATIONS =====
+    async createMeetupId(_meetup: Meetup): Promise<number> {
+      // Firestore uses string auto-IDs; this method is a no-op placeholder to satisfy the interface.
+      // If needed, switch the interface to string IDs and return the generated doc id instead.
+      return Date.now()
+    }
     
     // Create a new meetup and store to Firebase w auto-generated ID
     static async createMeetup(
@@ -44,15 +49,7 @@ import {
             );
 
             // Save to Firestore with destination as object
-            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
-            meetup.memberStatuses.forEach((status, userId) => {
-                memberStatusesObj[userId] = {
-                    status: status.status,
-                    locationSharingEnabled: status.locationSharingEnabled,
-                    arrivedAt: status.arrivedAt,
-                    joinedAt: status.joinedAt
-                }
-            })
+      // Members statuses are managed by Meetup model; store only memberIds here
 
             await setDoc(meetupRef, {
                 title: meetup.title,
@@ -71,7 +68,7 @@ import {
                 },
                 creatorId: meetup.creator.id,
                 memberIds: meetup.getMemberIds(),
-                members: memberStatusesObj,
+        // members are not persisted here; only memberIds
             });
 
             console.log("Meetup created with ID:", meetupRef.id);
@@ -83,49 +80,23 @@ import {
     }
     
     async getMeetupById(id: string): Promise<Meetup | null> {
-        try {
-            const meetupRef = doc(db, "meetups", id);
-            const meetupSnap = await getDoc(meetupRef);
-            return meetupSnap.exists() ? meetupSnap.data() : null;
-          } catch (error) {
-            console.error("[FIRESTORE] Error getting meetup doc:", error);
-            throw error;
-          }
+      try {
+        // Delegate to domain loader to construct a proper Meetup instance
+        return await Meetup.load(id)
+      } catch (error) {
+        console.error("[FIRESTORE] Error getting meetup:", error)
+        throw error
+      }
     }
   
-    async saveMeetup(meetup: Meetup): Promise<void> {
+    async saveMeetup(meetup: Meetup): Promise<boolean> {
       try {
         console.log("[FIRESTORE] Saving meetup:", meetup.id);
-        
-        const meetupRef = await getDoc(doc(db, "meetups", meetup.id));
-        // Convert member statuses to object
-        await setDoc(meetupRef, {
-            title: meetup.title,
-            dateTime: meetup.dateTime,
-            destination: {
-                id: meetup.destination.id,
-                name: meetup.destination.name,
-                category: meetup.destination.category,
-                priceRange: meetup.destination.priceRange,
-                rating: meetup.destination.rating,
-                reviewCount: meetup.destination.reviewCount,
-                coordinates: meetup.destination.coordinates,
-                address: meetup.destination.address,
-                thumbnailUrl: meetup.destination.thumbnailUrl,
-                openingHours: meetup.destination.openingHours,
-            },
-            creatorId: meetup.creator.id,
-            memberIds: meetup.getMemberIds(),
-            members: memberStatusesObj,
-        });
 
-        console.log("Meetup created with ID:", meetupRef.id);
-        });
-        
         const meetupRef = doc(db, "meetups", meetup.id);
         await setDoc(meetupRef, {
           title: meetup.title,
-          dateTime: meetup.dateTime.toISOString(),
+          dateTime: meetup.dateTime,
           destination: {
             id: meetup.destination.id,
             name: meetup.destination.name,
@@ -140,20 +111,21 @@ import {
           },
           creatorId: meetup.creator.id,
           memberIds: meetup.getMemberIds(),
-          members: memberStatusesObj,
-          updatedAt: new Date().toISOString()
-        });
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+        return true;
       } catch (error) {
         console.error("[FIRESTORE] Error saving meetup:", error);
         throw error;
       }
     }
   
-    async deleteMeetup(id: string): Promise<void> {
+    async deleteMeetup(id: string): Promise<boolean> {
       try {
         console.log("[FIRESTORE] Deleting meetup:", id);
         const meetupRef = doc(db, "meetups", id);
         await deleteDoc(meetupRef);
+        return true;
       } catch (error) {
         console.error("[FIRESTORE] Error deleting meetup:", error);
         throw error;
@@ -172,17 +144,30 @@ import {
     }
   
     // ===== USER OPERATIONS =====
+    async createUser(user: User): Promise<void> {
+      try {
+        console.log("[FIRESTORE] Creating user:", user.id);
+        const userRef = doc(db, "users", user.id);
+        await setDoc(userRef, {
+          name: user.name,
+          email: user.email,
+          currentLocation: user.currentLocation || null,
+          meetupIds: user.getMeetupIds?.() ? user.getMeetupIds() : [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("[FIRESTORE] Error creating user:", error);
+        throw error;
+      }
+    }
     
     async getUserById(id: string): Promise<User | null> {
       try {
         console.log("[FIRESTORE] Getting user:", id);
         const userRef = doc(db, "users", id);
         const userSnap = await getDoc(userRef);
-        
-        if (!userSnap.exists()) {
-          return null;
-        }
-        
+        if (!userSnap.exists()) return null;
         const data = userSnap.data();
         const user = new User(
           userSnap.id,
@@ -190,24 +175,42 @@ import {
           data.email,
           data.currentLocation || null
         );
-        
-        // Load meetups if meetupIds exist
-        if (data.meetupIds && data.meetupIds.length > 0) {
-          for (const meetupId of data.meetupIds) {
-            try {
-              const meetup = await this.getMeetupById(meetupId);
-              if (meetup) {
-                (user as any).meetups.push(meetup);
-              }
-            } catch (error) {
-              console.error(`[FIRESTORE] Failed to load meetup ${meetupId}:`, error);
-            }
-          }
-        }
-        
         return user;
       } catch (error) {
         console.error("[FIRESTORE] Error getting user:", error);
+        throw error;
+      }
+    }
+
+    async getUserByIdFull(id: string): Promise<User | null> {
+      try {
+        console.log("[FIRESTORE] Getting full user:", id);
+        const userRef = doc(db, "users", id);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) return null;
+        const data = userSnap.data();
+        const user = new User(
+          userSnap.id,
+          data.name,
+          data.email,
+          data.currentLocation || null
+        );
+        const ids: string[] = Array.isArray(data.meetupIds) ? data.meetupIds : []
+        if (ids.length > 0) {
+          const constructed: Meetup[] = []
+          for (const mid of ids) {
+            try {
+              const meetup = await this.getMeetupById(mid)
+              if (meetup) constructed.push(meetup)
+            } catch {
+              // ignore individual meetup load failures
+            }
+          }
+          ;(user as any).meetups = constructed
+        }
+        return user
+      } catch (error) {
+        console.error("[FIRESTORE] Error getting full user:", error);
         throw error;
       }
     }

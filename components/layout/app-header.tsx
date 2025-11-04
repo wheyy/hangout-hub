@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { MapPin, Users, User } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { authService } from "@/lib/auth/auth-service"
+import { authController } from "@/lib/auth/auth-service"
 import { useState } from "react"
 import {
   AlertDialog,
@@ -31,7 +31,7 @@ export function AppHeader({ currentPage, isAuthenticated }: AppHeaderProps) {
     if (signingOut) return
     setSigningOut(true)
     try {
-      await authService.signOut()
+  await authController.signOut()
       router.push("/auth/login")
     } catch (e) {
       console.error("Failed to sign out:", e)

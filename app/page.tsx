@@ -13,7 +13,7 @@ import { GooglePlacesService, PlaceSearchResult } from "@/lib/services/google-pl
 import { DirectionsRoute, formatDistance, formatDuration } from "@/lib/services/osrm-directions"
 import { drawRouteOnMap, fetchAndDisplayCarparks } from "@/lib/services/map-directions"
 import { AppHeader } from "@/components/layout/app-header"
-import { authService } from "@/lib/auth/auth-service"
+import { authController } from "@/lib/auth/auth-service"
 import { CreateMeetupModalWithDestination } from "@/components/meetup/create-meetup-modal-with-destination"
 import { loadSingaporeBoundary, isPointInSingapore } from "@/lib/utils/singapore-boundary"
 
@@ -563,7 +563,7 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    authService.getCurrentUser().then((user) => {
+  authController.getCurrentUser().then((user) => {
       setIsAuthenticated(!!user)
     })
   }, [])

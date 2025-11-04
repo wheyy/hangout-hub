@@ -65,14 +65,21 @@ export class MockDBService implements DBInterface {
     return this.meetups.get(id) || null;
   }
 
-  async saveMeetup(meetup: Meetup): Promise<void> {
-    console.log("[MOCK DB] Saving meetup:", meetup.id);
-    this.meetups.set(meetup.id, meetup);
+  async createMeetupId(_meetup: Meetup): Promise<number> {
+    // Simple monotonic numeric ID for mocks
+    return Date.now();
   }
 
-  async deleteMeetup(id: string): Promise<void> {
+  async saveMeetup(meetup: Meetup): Promise<boolean> {
+    console.log("[MOCK DB] Saving meetup:", meetup.id);
+    this.meetups.set(meetup.id, meetup);
+    return true;
+  }
+
+  async deleteMeetup(id: string): Promise<boolean> {
     console.log("[MOCK DB] Deleting meetup:", id);
     this.meetups.delete(id);
+    return true;
   }
 
   async getMeetupDoc(id: string): Promise<DocumentData | null> {
@@ -91,6 +98,28 @@ export class MockDBService implements DBInterface {
   async getUserById(id: string): Promise<User | null> {
     console.log("[MOCK DB] Getting user:", id);
     return this.users.get(id) || null;
+  }
+
+  async getUserByIdFull(id: string): Promise<User | null> {
+    console.log("[MOCK DB] Getting full user:", id);
+    const user = this.users.get(id) || null;
+    if (!user) return null;
+    // Hydrate meetups by scanning mock meetups map
+    const constructed: Meetup[] = [];
+    for (const meetup of this.meetups.values()) {
+      try {
+        if (meetup.getMemberIds().includes(id)) constructed.push(meetup);
+      } catch {
+        // ignore
+      }
+    }
+    (user as any).meetups = constructed;
+    return user;
+  }
+
+  async createUser(user: User): Promise<void> {
+    console.log("[MOCK DB] Creating user:", user.id);
+    this.users.set(user.id, user);
   }
 
   async saveUser(user: User): Promise<void> {
