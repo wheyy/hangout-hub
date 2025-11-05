@@ -65,9 +65,17 @@ export class MockDBService implements DBInterface {
     return this.meetups.get(id) || null;
   }
 
-  async createMeetupId(_meetup: Meetup): Promise<number> {
-    // Simple monotonic numeric ID for mocks
-    return Date.now();
+  async createMeetup(title: string, dateTime: Date, destination: HangoutSpot, creator: User): Promise<Meetup> {
+    console.log("[MOCK DB] Creating meetup:", title);
+    const newMeetup = new Meetup(
+      `mock-meetup-${this.meetups.size + 1}`,
+      title,
+      dateTime,
+      destination,
+      creator
+    );
+    this.meetups.set(newMeetup.id, newMeetup);
+    return newMeetup;
   }
 
   async saveMeetup(meetup: Meetup): Promise<boolean> {

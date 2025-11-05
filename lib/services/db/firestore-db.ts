@@ -22,14 +22,9 @@ import {
    */
   export class FirestoreDBService implements DBInterface {
     // ===== MEETUP OPERATIONS =====
-    async createMeetupId(_meetup: Meetup): Promise<number> {
-      // Firestore uses string auto-IDs; this method is a no-op placeholder to satisfy the interface.
-      // If needed, switch the interface to string IDs and return the generated doc id instead.
-      return Date.now()
-    }
     
     // Create a new meetup and store to Firebase w auto-generated ID
-    static async createMeetup(
+    async createMeetup(
         title: string,
         dateTime: Date,
         destination: HangoutSpot,
@@ -43,7 +38,7 @@ import {
             const meetup = new Meetup(
                 meetupRef.id,
                 title,
-                dateTime,
+                dateTime, 
                 destination,
                 creator
             );

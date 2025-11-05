@@ -1,4 +1,5 @@
 // lib/services/db/db-service.ts
+import { HangoutSpot } from "@/lib/models/hangoutspot";
 import { Meetup } from "@/lib/models/meetup";
 import { User } from "@/lib/models/user";
 import { DocumentData } from "firebase/firestore";
@@ -11,7 +12,7 @@ export interface DBInterface {
 
   // Meetup operations
   getMeetupById(id: string): Promise<Meetup | null>;
-  createMeetupId(meetup: Meetup): Promise<number>;
+  createMeetup(title: string, dateTime: Date, destination: HangoutSpot, creator: User): Promise<Meetup>;
   saveMeetup(meetup: Meetup): Promise<boolean>;
   deleteMeetup(id: string): Promise<boolean>;
   getMeetupDoc(id: string): Promise<DocumentData | null>;
