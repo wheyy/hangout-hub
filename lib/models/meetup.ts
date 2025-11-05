@@ -46,6 +46,16 @@ export class Meetup {
         console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
 
+    
+    // ✅ Create a new meetup and store to Firebase w auto-generated ID
+    static async create(
+        title: string,
+        dateTime: Date,
+        destination: HangoutSpot,
+        creator: User
+    ): Promise<Meetup> {
+        return db.createMeetup(title, dateTime, destination, creator)
+    }
     // Load a single meetup from Firestore
     static async load(meetupId: string): Promise<Meetup | null> {
         return db.getMeetupById(meetupId)
