@@ -263,21 +263,7 @@ import {
           data.email,
           data.currentLocation || null
         );
-        
-        // Load meetups if meetupIds exist
-        if (data.meetupIds && data.meetupIds.length > 0) {
-          for (const meetupId of data.meetupIds) {
-            try {
-              const meetup = await this.getMeetupById(meetupId);
-              if (meetup) {
-                (user as any).meetups.push(meetup);
-              }
-            } catch (error) {
-              console.error(`[FIRESTORE] Failed to load meetup ${meetupId}:`, error);
-            }
-          }
-        }
-        
+       
         return user;
       } catch (error) {
         console.error("[FIRESTORE] Error getting user:", error);

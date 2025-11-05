@@ -217,8 +217,6 @@ export const authController = {
       return (await (CURRENT_USER as Promise<AppUser | null>)) ?? null
     }
 
-    // Ensure Firebase auth has finished restoring the session after a refresh.
-    // We do this inline (no helper) by listening once for onAuthStateChanged
     // if auth.currentUser is not yet set.
     let fb = auth.currentUser
     if (!fb) {
