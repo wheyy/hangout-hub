@@ -16,7 +16,7 @@ export const useUserStore = create<UserStore>((set, get) => {
     
     initializeUser: async () => {
       try {
-  const user = await authController.getCurrentUserFull();
+        const user = await authController.getCurrentUserFull();
         
         // Set up notifyUpdate to trigger re-renders
         user.notifyUpdate = async () => {

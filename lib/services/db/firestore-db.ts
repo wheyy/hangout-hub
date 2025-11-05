@@ -174,31 +174,40 @@ import {
     }
   
     async saveMeetup(meetup: Meetup): Promise<boolean> {
-      try {
-        console.log("[FIRESTORE] Saving meetup:", meetup.id);
-        
-        const meetupRef = await doc(firestoreDB, "meetups", meetup.id);
-        await setDoc(meetupRef, {
-          title: meetup.title,
-          dateTime: meetup.dateTime,
-          destination: {
-            id: meetup.destination.id,
-            name: meetup.destination.name,
-            category: meetup.destination.category,
-            priceRange: meetup.destination.priceRange,
-            rating: meetup.destination.rating,
-            reviewCount: meetup.destination.reviewCount,
-            coordinates: meetup.destination.coordinates,
-            address: meetup.destination.address,
-            thumbnailUrl: meetup.destination.thumbnailUrl,
-            openingHours: meetup.destination.openingHours,
-          },
-          creatorId: meetup.creator.id,
-          memberIds: meetup.getMemberIds(),
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-        return true;
-      } catch (error) {
+        try {
+            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
+            meetup.getAllMemberStatuses().forEach((status, userId) => {
+                memberStatusesObj[userId] = {
+                    status: status.status,
+                    locationSharingEnabled: status.locationSharingEnabled,
+                    arrivedAt: status.arrivedAt,
+                    joinedAt: status.joinedAt
+                }
+            })
+
+            console.log("Updating meetup in Firestore:", meetup.id);
+            console.log("Members:", meetup.getMemberIds());
+            await updateDoc(doc(firestoreDB, "meetups", meetup.id), {
+                title: meetup.title,
+                dateTime: meetup.dateTime.toISOString(),
+                destination: {
+                    id: meetup.destination.id,
+                    name: meetup.destination.name,
+                    category: meetup.destination.category,
+                    priceRange: meetup.destination.priceRange,
+                    rating: meetup.destination.rating,
+                    reviewCount: meetup.destination.reviewCount,
+                    coordinates: meetup.destination.coordinates,
+                    address: meetup.destination.address,
+                    thumbnailUrl: meetup.destination.thumbnailUrl,
+                    openingHours: meetup.destination.openingHours,
+                },
+                memberIds: meetup.getMemberIds(),
+                members: memberStatusesObj,
+                updatedAt: new Date().toISOString()
+            });
+            return true;
+        } catch (error) {
         console.error("[FIRESTORE] Error saving meetup:", error);
         throw error;
       }
@@ -207,13 +216,13 @@ import {
     async deleteMeetup(id: string): Promise<boolean> {
       try {
         console.log("[FIRESTORE] Deleting meetup:", id);
-        const meetupRef = doc(firestoreDB, "meetups", id);
-        await deleteDoc(meetupRef);
+        await deleteDoc(doc(firestoreDB, "meetups", id));
         return true;
       } catch (error) {
         console.error("[FIRESTORE] Error deleting meetup:", error);
         throw error;
       }
+      
     }
   
     async getMeetupDoc(id: string): Promise<DocumentData | null> {

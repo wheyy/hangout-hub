@@ -1,5 +1,5 @@
 import { doc, onSnapshot, Unsubscribe } from "firebase/firestore"
-import { db } from "@/lib/config/firebase"
+import { firestoreDB } from "@/lib/config/firebase"
 import { User } from "@/lib/models/user"
 
 // const LOCATION_UPDATE_INTERVAL = 1 * 60 * 1000 // 1 minute
@@ -29,7 +29,7 @@ export class LocationTrackingService {
     // Set up listener for each member
     memberIds.forEach((memberId) => {
       const unsubscribe = onSnapshot(
-        doc(db, "users", memberId),
+        doc(firestoreDB, "users", memberId),
         (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data()

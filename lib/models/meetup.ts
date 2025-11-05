@@ -46,66 +46,31 @@ export class Meetup {
         console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
 
-    // ✅ Load a single meetup from Firestore
+    // Load a single meetup from Firestore
     static async load(meetupId: string): Promise<Meetup | null> {
         return db.getMeetupById(meetupId)
     }
 
-    // ✅ Update meetup in Firestore
+    // Update meetup in db 
     async save(): Promise<boolean> {
-        try {
-            const memberStatusesObj: Record<string, Omit<MemberStatus, 'userId'>> = {}
-            this.memberStatuses.forEach((status, userId) => {
-                memberStatusesObj[userId] = {
-                    status: status.status,
-                    locationSharingEnabled: status.locationSharingEnabled,
-                    arrivedAt: status.arrivedAt,
-                    joinedAt: status.joinedAt
-                }
-            })
-
-            console.log("Updating meetup in Firestore:", this.id);
-            console.log("Members:", this.getMemberIds());
-            await updateDoc(doc(firestoreDB, "meetups", this.id), {
-                title: this.title,
-                dateTime: this.dateTime.toISOString(),
-                destination: {
-                    id: this.destination.id,
-                    name: this.destination.name,
-                    category: this.destination.category,
-                    priceRange: this.destination.priceRange,
-                    rating: this.destination.rating,
-                    reviewCount: this.destination.reviewCount,
-                    coordinates: this.destination.coordinates,
-                    address: this.destination.address,
-                    thumbnailUrl: this.destination.thumbnailUrl,
-                    openingHours: this.destination.openingHours,
-                },
-                memberIds: this.getMemberIds(),
-                members: memberStatusesObj,
-                updatedAt: new Date().toISOString()
-            });
-            return true;
-        } catch (e) {
-            console.error("Error updating meetup:", e);
-            return false;
-        }
+        return db.saveMeetup(this)
     }
 
-    // ✅ Delete meetup from Firestore
+    // Delete meetup from local and db
     async deleteMeetup(): Promise<boolean> {
         try {
             console.log("Deleting meetup:", this.id);
             
-            // Remove from all members
+            // Remove Meetup from all members
             for (const member of this.members) {
                 console.log("Removing meetup for member:", member.getId());
                 member.removeMeetup(this);
             }
             this.members = [];
+            console.log("All members removed from meetup.");
             
             // Delete from Firestore
-            await deleteDoc(doc(firestoreDB, "meetups", this.id));
+            await db.deleteMeetup(this.id);
             
             console.log(`Meetup ${this.title} deleted.`);
             return true;
@@ -115,7 +80,7 @@ export class Meetup {
         }
     }
 
-    // ✅ Add member and update Firestore
+    // Add member and update Firestore
     async addMember(user: User): Promise<void> {
         if (!this.members.find(member => member.id === user.id)) {
             this.members.push(user);
