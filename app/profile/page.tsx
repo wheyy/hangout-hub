@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true
-  authController.getCurrentUser().then((u) => {
+  authController.getCurrentUserFull().then((u) => {
       if (!mounted) return
       if (u) {
         setUserData({ name: u.name, email: u.email, password: "********" })

@@ -17,16 +17,19 @@ export const useUserStore = create<UserStore>((set, get) => {
     initializeUser: async () => {
       try {
         const user = await authController.getCurrentUserFull();
-        
+        if (!user) {
+          set({ user: null, isLoading: false });
+          return;
+        }
+
         // Set up notifyUpdate to trigger re-renders
         user.notifyUpdate = async () => {
           console.log("User notifyUpdate called");
-          const user = await authController.getCurrentUserFull();
-          set({ user }); // Force new reference
+          const refreshed = await authController.getCurrentUserFull();
+          set({ user: refreshed ?? null });
         };
-        
-        set({ user, isLoading: false });
 
+        set({ user, isLoading: false });
         console.log("User initialized:", user);
       } catch (error) {
         console.error("Failed to initialize user:", error);

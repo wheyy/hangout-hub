@@ -18,6 +18,11 @@ import {
 
 // Deprecated local view-models removed; controller now returns domain User
 
+// Single hydrated current user cache (full user with meetups).
+// CURRENT_USER may temporarily hold a Promise<AppUser|null> while a
+// hydration is in-flight. This keeps the module surface minimal.
+let CURRENT_USER: AppUser | Promise<AppUser | null> | null = null
+
 function mapFirebaseError(code: string): string {
   switch (code) {
     case "auth/email-already-in-use":
@@ -66,6 +71,7 @@ export const authController = {
         // ignore failures to send verification email
       }
       await fbSignOut(auth)
+      CURRENT_USER = null
       // Return domain user (note: user will be signed out after this)
       return u
     } catch (e: any) {
@@ -82,8 +88,9 @@ export const authController = {
         throw new Error("Please verify your email before signing in.")
       }
       // Load user document; if missing, raise an error
-      const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
+  const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
       if (!u) throw new Error("User profile not found.")
+  CURRENT_USER = u
       return u
     } catch (e: any) {
       // Preserve explicit error messages (e.g., verification required)
@@ -100,39 +107,12 @@ export const authController = {
   async signOut(): Promise<void> {
     try {
       await fbSignOut(auth)
+      CURRENT_USER = null
     } catch (e: any) {
       throw new Error("Failed to sign out. Please try again.")
     }
   },
 
-  async getCurrentUser(): Promise<AppUser | null> {
-    // If already available, try to enrich from user doc
-    const cur = auth.currentUser
-    if (cur) {
-      try {
-        const u = await AppUser.loadFromFirestore(cur.uid)
-        if (!u) return null
-        return u
-      } catch {
-        return null
-      }
-    }
-
-    // Await one-time auth state, then load user doc
-    return new Promise<AppUser | null>((resolve) => {
-      const unsub = onAuthStateChanged(auth, async (user) => {
-        unsub()
-        if (!user) return resolve(null)
-        try {
-          const u = await AppUser.loadFromFirestore(user.uid)
-          if (!u) return resolve(null)
-          resolve(u)
-        } catch {
-          resolve(null)
-        }
-      })
-    })
-  },
 
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
     const fbUser = auth.currentUser
@@ -159,6 +139,8 @@ export const authController = {
     const u = await AppUser.loadFromFirestore(fbUser.uid)
     if (!u) throw new Error("User profile not found.")
     await u.updateName(name)
+    // Keep cache in sync with the updated user; keep it simple.
+    CURRENT_USER = u
   },
 
     async deleteAccount(): Promise<void> {
@@ -174,6 +156,7 @@ export const authController = {
       }
       try {
         await fbDeleteUser(fbUser)
+        CURRENT_USER = null
       } catch (e: any) {
         const code = e?.code || ""
         if (code === "auth/requires-recent-login") {
@@ -211,6 +194,7 @@ export const authController = {
         await fbSendEmailVerification(cred.user, actionCodeSettings as any)
       } finally {
         await fbSignOut(auth)
+        CURRENT_USER = null
       }
     } catch (e: any) {
       const code = e?.code || ""
@@ -222,29 +206,54 @@ export const authController = {
   },
 
   // Returns the hydrated domain User (with meetups loaded via user.ts)
-  async getCurrentUserFull(): Promise<AppUser> {
-    const resolveWithUser = async (fbUser: User): Promise<AppUser> => {
-      const u = await AppUser.loadFromFirestoreFull(fbUser.uid)
-      if (!u) throw new Error("User profile not found.")
-      return u
+  async getCurrentUserFull(): Promise<AppUser | null> {
+    // If CURRENT_USER holds a resolved AppUser, return it
+    if (CURRENT_USER && typeof (CURRENT_USER as any).then !== "function") {
+      return CURRENT_USER as AppUser
     }
 
-    const cur = auth.currentUser
-    if (cur) {
-      return resolveWithUser(cur)
+    // If CURRENT_USER is a Promise (hydration in-flight), await and return
+    if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {
+      return (await (CURRENT_USER as Promise<AppUser | null>)) ?? null
     }
 
-    return new Promise<AppUser>((resolve, reject) => {
-      const unsub = onAuthStateChanged(auth, async (u) => {
-        unsub()
-        if (!u) return reject(new Error("Not authenticated."))
-        try {
-          const full = await resolveWithUser(u)
-          resolve(full)
-        } catch (e) {
-          reject(e)
-        }
+    // Ensure Firebase auth has finished restoring the session after a refresh.
+    // We do this inline (no helper) by listening once for onAuthStateChanged
+    // if auth.currentUser is not yet set.
+    let fb = auth.currentUser
+    if (!fb) {
+      fb = await new Promise<User | null>((resolve) => {
+        const unsub = onAuthStateChanged(
+          auth,
+          (u) => {
+            unsub()
+            resolve(u)
+          },
+          () => {
+            unsub()
+            resolve(null)
+          },
+        )
       })
-    })
-  },
+    }
+    if (!fb) return null
+
+    // Start hydration and store the Promise in CURRENT_USER to dedupe concurrent calls
+    const p = AppUser.loadFromFirestoreFull(fb.uid)
+      .then((u) => {
+        // Only commit if CURRENT_USER is still a Promise (i.e., in-flight)
+        if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {
+          CURRENT_USER = u ?? null
+        }
+        return u ?? null
+      })
+      .catch(() => {
+        if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {
+          CURRENT_USER = null
+        }
+        return null
+      })
+    CURRENT_USER = p
+    return await p
+  }
 }

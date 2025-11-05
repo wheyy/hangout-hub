@@ -563,7 +563,7 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-  authController.getCurrentUser().then((user) => {
+  authController.getCurrentUserFull().then((user) => {
       setIsAuthenticated(!!user)
     })
   }, [])
