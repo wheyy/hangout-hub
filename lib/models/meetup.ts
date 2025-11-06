@@ -54,16 +54,16 @@ export class Meetup {
         destination: HangoutSpot,
         creator: User
     ): Promise<Meetup> {
-        return db.createMeetup(title, dateTime, destination, creator)
+        return await db.createMeetup(title, dateTime, destination, creator)
     }
     // Load a single meetup from Firestore
     static async load(meetupId: string): Promise<Meetup | null> {
-        return db.getMeetupById(meetupId)
+        return await db.getMeetupById(meetupId)
     }
 
     // Update meetup in db 
     async save(): Promise<boolean> {
-        return db.saveMeetup(this)
+        return await db.saveMeetup(this)
     }
 
     // Delete meetup from local and db
