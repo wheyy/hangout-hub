@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { MapPin } from "lucide-react"
 import { AuthGuard } from "@/components/layout/auth-guard"
-import { authController } from "@/lib/auth/auth-service"
+import { authService } from "@/lib/auth/auth-service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,7 @@ export default function ResetPasswordPage() {
     setError("")
     setInfo("")
     try {
-  await authController.sendPasswordReset(email)
+  await authService.sendPasswordReset(email)
       setInfo("If an account exists for this email, a password reset link has been sent.")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send reset email. Please try again.")

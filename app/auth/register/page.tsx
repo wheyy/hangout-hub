@@ -12,7 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { MapPin, Eye, EyeOff, Check } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { authController } from "@/lib/auth/auth-service"
+import { authService } from "@/lib/auth/auth-service"
 import { AuthGuard } from "@/components/layout/auth-guard"
 
 export default function RegisterPage() {
@@ -63,7 +63,7 @@ export default function RegisterPage() {
     }
 
     try {
-  await authController.signUp(formData.email, formData.password, formData.name)
+  await authService.signUp(formData.email, formData.password, formData.name)
       router.push(`/auth/verify?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed. Please try again.")

@@ -14,13 +14,9 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification as fbSendEmailVerification,
 } from "firebase/auth"
-// Note: Do NOT import user store here to avoid circular dependency.
 
-// Deprecated local view-models removed; controller now returns domain User
 
 // Single hydrated current user cache (full user with meetups).
-// CURRENT_USER may temporarily hold a Promise<AppUser|null> while a
-// hydration is in-flight. This keeps the module surface minimal.
 let CURRENT_USER: AppUser | Promise<AppUser | null> | null = null
 
 function mapFirebaseError(code: string): string {
@@ -47,7 +43,7 @@ function mapFirebaseError(code: string): string {
   }
 }
 
-export const authController = {
+export const authService = {
   async signUp(email: string, password: string, name: string): Promise<AppUser> {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)

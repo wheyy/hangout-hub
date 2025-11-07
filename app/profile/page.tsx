@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { User, Eye, EyeOff, Check, X } from "lucide-react"
 import { useEffect, useState } from "react"
-import { authController } from "@/lib/auth/auth-service"
+import { authService } from "@/lib/auth/auth-service"
 import { AuthGuard } from "@/components/layout/auth-guard"
 import { useRouter } from "next/navigation"
 import { AppHeader } from "@/components/layout/app-header"
@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true
-  authController.getCurrentUserFull().then((u) => {
+  authService.getCurrentUserFull().then((u) => {
       if (!mounted) return
       if (u) {
         setUserData({ name: u.name, email: u.email, password: "********" })
@@ -139,11 +139,11 @@ export default function ProfilePage() {
       // Update name if changed
       if (formData.newName && formData.newName.trim() && formData.newName.trim() !== userData.name) {
         updatedName = formData.newName.trim()
-  await authController.changeDisplayName(updatedName)
+  await authService.changeDisplayName(updatedName)
         setUserData((prev) => ({ ...prev, name: updatedName }))
       }
       if (formData.newPassword) {
-  await authController.changePassword(formData.currentPassword, formData.newPassword)
+  await authService.changePassword(formData.currentPassword, formData.newPassword)
         setUserData((prev) => ({ ...prev, password: "********" }))
       }
       setMessage("Profile updated successfully")
@@ -162,7 +162,7 @@ export default function ProfilePage() {
     setMessage("")
     setMessageType("")
     try {
-  await authController.deleteAccount()
+  await authService.deleteAccount()
       // Redirect after deletion
       router.push("/auth/login")
     } catch (e) {

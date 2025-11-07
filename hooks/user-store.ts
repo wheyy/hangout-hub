@@ -1,6 +1,6 @@
 import { User } from "@/lib/models/user"
 import { create } from "zustand"
-import { authController } from "@/lib/auth/auth-service"
+import { authService } from "@/lib/auth/auth-service"
 
 interface UserStore {
   user: User | null;
@@ -16,7 +16,7 @@ export const useUserStore = create<UserStore>((set, get) => {
     
     initializeUser: async () => {
       try {
-        const user = await authController.getCurrentUserFull();
+  const user = await authService.getCurrentUserFull();
         if (!user) {
           set({ user: null, isLoading: false });
           return;
@@ -25,7 +25,7 @@ export const useUserStore = create<UserStore>((set, get) => {
         // Set up notifyUpdate to trigger re-renders
         user.notifyUpdate = async () => {
           console.log("User notifyUpdate called");
-          const refreshed = await authController.getCurrentUserFull();
+          const refreshed = await authService.getCurrentUserFull();
           set({ user: refreshed ?? null });
         };
 

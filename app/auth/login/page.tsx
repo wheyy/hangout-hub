@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { MapPin, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { authController } from "@/lib/auth/auth-service"
+import { authService } from "@/lib/auth/auth-service"
 import { AuthGuard } from "@/components/layout/auth-guard"
 import { useUserStore } from "@/hooks/user-store"
 
@@ -33,7 +33,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-  await authController.signIn(email, password)
+  await authService.signIn(email, password)
       await initializeUser()
       router.push("/meetups")
     } catch (err) {
@@ -47,7 +47,7 @@ export default function LoginPage() {
     setResendLoading(true)
     setInfo("")
     try {
-  await authController.resendVerification(email, password)
+  await authService.resendVerification(email, password)
       setError("")
       setInfo("Verification email sent. Please check your inbox.")
       setResendCooldown(60)
