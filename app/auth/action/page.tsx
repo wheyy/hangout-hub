@@ -18,9 +18,6 @@ export default function AuthActionRouter() {
           return "/auth/verify/confirm"
         case "resetpassword":
           return "/auth/reset/confirm"
-        // You can expand these as needed:
-        // case "recoveremail": return "/auth/recover/confirm"
-        // case "signIn": return "/auth/email-link"
         default:
           return "/auth/login"
       }
