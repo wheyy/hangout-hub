@@ -170,7 +170,7 @@ The application uses the **Active Record pattern** for domain models. Each model
 
 Each model has methods like:
 - Static `create()` - Creates instance and saves to Firebase
-- Static `load()` / `loadFromFirestoreFull()` - Fetches from Firebase
+- Static `load()` / `loadFromDatabaseFull()` - Fetches from Firebase
 - Instance `save()` - Updates Firebase document
 - Instance `delete()` / `deleteMeetup()` - Removes from Firebase
 
