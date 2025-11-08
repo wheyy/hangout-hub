@@ -1,0 +1,20 @@
+[
+  {
+    "id": "mock-user-1",
+    "name": "Alice Mock",
+    "email": "alice@mock.com",
+    "currentLocation": [103.8198, 1.3521],
+    "meetupIds": ["mock-meetup-1"],
+    "createdAt": "2025-01-01T10:00:00.000Z",
+    "updatedAt": "2025-01-01T10:00:00.000Z"
+  },
+  {
+    "id": "mock-user-2",
+    "name": "Bob Mock",
+    "email": "bob@mock.com",
+    "currentLocation": [103.8198, 1.3600],
+    "meetupIds": ["mock-meetup-1"],
+    "createdAt": "2025-01-01T10:05:00.000Z",
+    "updatedAt": "2025-01-01T10:05:00.000Z"
+  }
+]

@@ -16,7 +16,7 @@ export const useUserStore = create<UserStore>((set, get) => {
     
     initializeUser: async () => {
       try {
-  const user = await authService.getCurrentUserFull();
+        const user = await authService.getCurrentUserFull();
         if (!user) {
           set({ user: null, isLoading: false });
           return;
