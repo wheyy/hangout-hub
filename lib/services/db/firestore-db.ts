@@ -83,7 +83,7 @@ import {
             }
             
             const data = meetupDoc.data();
-            const creator = await User.loadFromDatabase(data.creatorId);
+            const creator = await User.loadFromFirestore(data.creatorId);
 
             // ✅ Parse dateTime carefully
             let dateTime: Date;
@@ -154,7 +154,7 @@ import {
             // Fetch users from user db
             data.memberIds.forEach(async (memberId: string) => {
                 if (memberId !== meetup.creator.id) {
-                    const member = await User.loadFromDatabase(memberId);
+                    const member = await User.loadFromFirestore(memberId);
                     if (member) {
                         meetup.addMemberWithoutStatus(member);
                     }

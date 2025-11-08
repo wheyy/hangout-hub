@@ -63,7 +63,7 @@ export class LocationTrackingService {
     this.isTracking = true
 
     // Load and cache the user
-  this.currentUser = await User.loadFromDatabase(userId)
+    this.currentUser = await User.loadFromFirestore(userId)
     if (!this.currentUser) {
       console.warn("User not found; cannot start location tracking")
       this.isTracking = false
