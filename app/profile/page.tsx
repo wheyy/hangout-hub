@@ -69,7 +69,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     let mounted = true
-    authService.getCurrentUser().then((u) => {
+  authService.getCurrentUserFull().then((u) => {
       if (!mounted) return
       if (u) {
         setUserData({ name: u.name, email: u.email, password: "********" })
@@ -139,11 +139,11 @@ export default function ProfilePage() {
       // Update name if changed
       if (formData.newName && formData.newName.trim() && formData.newName.trim() !== userData.name) {
         updatedName = formData.newName.trim()
-        await authService.updateName(updatedName)
+  await authService.changeDisplayName(updatedName)
         setUserData((prev) => ({ ...prev, name: updatedName }))
       }
       if (formData.newPassword) {
-        await authService.updatePassword(formData.currentPassword, formData.newPassword)
+  await authService.changePassword(formData.currentPassword, formData.newPassword)
         setUserData((prev) => ({ ...prev, password: "********" }))
       }
       setMessage("Profile updated successfully")
@@ -162,7 +162,7 @@ export default function ProfilePage() {
     setMessage("")
     setMessageType("")
     try {
-      await authService.deleteAccount()
+  await authService.deleteAccount()
       // Redirect after deletion
       router.push("/auth/login")
     } catch (e) {

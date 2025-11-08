@@ -20,7 +20,7 @@ export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const user = await authService.getCurrentUser()
+  const user = await authService.getCurrentUserFull()
         setIsAuthenticated(!!user)
 
         if (requireAuth && !user) {

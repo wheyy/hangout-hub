@@ -1,5 +1,5 @@
 import { doc, onSnapshot, Unsubscribe } from "firebase/firestore"
-import { db } from "@/lib/config/firebase"
+import { firestoreDB } from "@/lib/config/firebase"
 import { User } from "@/lib/models/user"
 
 // const LOCATION_UPDATE_INTERVAL = 1 * 60 * 1000 // 1 minute
@@ -15,6 +15,7 @@ export class LocationTrackingService {
   private listeners: Map<string, Unsubscribe> = new Map()
   private locationUpdateTimer: NodeJS.Timeout | null = null
   private isTracking: boolean = false
+  private currentUser: User | null = null
 
   /**
    * Subscribe to location updates for a list of member IDs
@@ -28,7 +29,7 @@ export class LocationTrackingService {
     // Set up listener for each member
     memberIds.forEach((memberId) => {
       const unsubscribe = onSnapshot(
-        doc(db, "users", memberId),
+        doc(firestoreDB, "users", memberId),
         (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data()
@@ -61,12 +62,20 @@ export class LocationTrackingService {
 
     this.isTracking = true
 
+    // Load and cache the user
+    this.currentUser = await User.loadFromFirestore(userId)
+    if (!this.currentUser) {
+      console.warn("User not found; cannot start location tracking")
+      this.isTracking = false
+      return () => {}
+    }
+
     // Get initial location
-    await this.updateUserLocation(userId)
+    await this.updateUserLocation()
 
     // Set up periodic updates every 5 minutes
     this.locationUpdateTimer = setInterval(() => {
-      this.updateUserLocation(userId)
+  this.updateUserLocation()
     }, LOCATION_UPDATE_INTERVAL)
 
     // Return cleanup function
@@ -78,20 +87,23 @@ export class LocationTrackingService {
   /**
    * Stop tracking current user's location
    */
-  async stopTrackingOwnLocation(userId: string): Promise<void> {
+  async stopTrackingOwnLocation(_userId: string): Promise<void> {
     if (this.locationUpdateTimer) {
       clearInterval(this.locationUpdateTimer)
       this.locationUpdateTimer = null
     }
     this.isTracking = false
 
-    // Clear location in Firebase
+    // Clear location in Firebase via User instance
     try {
-      await User.updateCurrentLocation(userId, null)
-      console.log(`Stopped tracking location for user ${userId}`)
+      if (this.currentUser) {
+        await this.currentUser.updateCurrentLocation(null)
+        console.log(`Stopped tracking location for user ${this.currentUser.getId()}`)
+      }
     } catch (error) {
       console.error("Failed to clear location in Firestore:", error)
     }
+    this.currentUser = null
   }
 
   /**
@@ -104,7 +116,8 @@ export class LocationTrackingService {
   /**
    * Get and update user's current location from browser geolocation API
    */
-  private async updateUserLocation(userId: string): Promise<void> {
+  private async updateUserLocation(): Promise<void> {
+    if (!this.currentUser) return
     if (!navigator.geolocation) {
       console.warn("Geolocation not supported")
       return
@@ -119,8 +132,8 @@ export class LocationTrackingService {
           ]
 
           try {
-            await User.updateCurrentLocation(userId, coords)
-            console.log(`Updated location for user ${userId}:`, coords)
+            await this.currentUser!.updateCurrentLocation(coords)
+            console.log(`Updated location for user ${this.currentUser!.getId()}:`, coords)
             resolve()
           } catch (error) {
             console.error("Failed to update location in Firestore:", error)

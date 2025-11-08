@@ -82,6 +82,7 @@ export function GroupManagement({
     meetup.removeMember(member).then(() => {
       console.log(`User ${member.getUsername()} has been kicked from the meetup.`)
     })
+    router.refresh()
   }
 
   const handleLeave = () => {

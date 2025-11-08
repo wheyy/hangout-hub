@@ -31,7 +31,7 @@ export function AppHeader({ currentPage, isAuthenticated }: AppHeaderProps) {
     if (signingOut) return
     setSigningOut(true)
     try {
-      await authService.signOut()
+  await authService.signOut()
       router.push("/auth/login")
     } catch (e) {
       console.error("Failed to sign out:", e)

@@ -25,7 +25,7 @@ export default function ResetPasswordPage() {
     setError("")
     setInfo("")
     try {
-      await authService.sendPasswordReset(email)
+  await authService.sendPasswordReset(email)
       setInfo("If an account exists for this email, a password reset link has been sent.")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send reset email. Please try again.")

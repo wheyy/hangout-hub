@@ -1,0 +1,35 @@
+[
+  {
+    "id": "mock-meetup-1",
+    "title": "Mock Coffee Meetup",
+    "dateTime": "2025-01-02T10:00:00.000Z",
+    "destination": {
+      "id": "mock-spot-1",
+      "name": "Mock Cafe",
+      "category": "Cafe",
+      "priceRange": "$$",
+      "rating": 4.5,
+      "reviewCount": 100,
+      "coordinates": [103.8198, 1.3521],
+      "address": "123 Mock Street, Singapore",
+      "thumbnailUrl": "https://via.placeholder.com/150",
+      "openingHours": "monday: 9:00 AM - 10:00 PM"
+    },
+    "creatorId": "mock-user-1",
+    "memberIds": ["mock-user-1", "mock-user-2"],
+    "members": {
+      "mock-user-1": {
+        "status": "traveling",
+        "locationSharingEnabled": true,
+        "arrivedAt": null,
+        "joinedAt": "2025-01-01T10:00:00.000Z"
+      },
+      "mock-user-2": {
+        "status": "traveling",
+        "locationSharingEnabled": true,
+        "arrivedAt": null,
+        "joinedAt": "2025-01-01T10:05:00.000Z"
+      }
+    }
+  }
+]

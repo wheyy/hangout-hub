@@ -33,7 +33,7 @@ export default function LoginPage() {
     setError("")
 
     try {
-      await authService.signIn(email, password)
+  await authService.signIn(email, password)
       await initializeUser()
       router.push("/meetups")
     } catch (err) {
@@ -47,7 +47,7 @@ export default function LoginPage() {
     setResendLoading(true)
     setInfo("")
     try {
-      await authService.resendVerification(email, password)
+  await authService.resendVerification(email, password)
       setError("")
       setInfo("Verification email sent. Please check your inbox.")
       setResendCooldown(60)

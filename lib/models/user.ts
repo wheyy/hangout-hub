@@ -1,19 +1,5 @@
 import { Meetup } from "./meetup"
-import { db } from "@/lib/config/firebase"
-import {
-    arrayRemove,
-    arrayUnion,
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    serverTimestamp,
-    setDoc,
-    updateDoc,
-    where,
-    documentId,
-} from "firebase/firestore"
+import { db } from "@/lib/services/db/db-factory"
 
 // Firestore user document shape
 export interface UserDoc {
@@ -41,24 +27,46 @@ export class User {
     ) {}
 
     // === Instance methods ===
+    async updateName(newName: string): Promise<void> {
+        const name = (newName ?? "").trim()
+        if (!name) throw new Error("Name cannot be empty.")
+        this.name = name
+        await this.save()
+        this.notifyUpdate?.()
+    }
+
+    async updateCurrentLocation(
+        loc: [longitude: number, latitude: number] | null,
+    ): Promise<void> {
+        this.currentLocation = loc ?? null
+        await this.save()
+        this.notifyUpdate?.()
+    }
+
+    async updateFields(
+        patch: Partial<{ name: string; email: string; currentLocation: [longitude: number, latitude: number] | null }>,
+    ): Promise<void> {
+        if (patch.name !== undefined) this.name = patch.name ?? this.name
+        if (patch.email !== undefined) this.email = patch.email ?? this.email
+        if (patch.currentLocation !== undefined) this.currentLocation = patch.currentLocation ?? null
+        await this.save()
+        this.notifyUpdate?.()
+    }
+
+    async removeAccount(): Promise<void> {
+        const dbi = db
+        await dbi.deleteUser(this.id)
+    }
     async addMeetup(meetup: Meetup): Promise<void> {
         if (!this.meetups.find((m) => m.id === meetup.id)) {
             this.meetups.push(meetup)
+            await this.save()
         }
-        const ref = doc(db, "users", this.id)
-        await updateDoc(ref, {
-            meetupIds: arrayUnion(meetup.id),
-            updatedAt: serverTimestamp(),
-        } as any)
     }
 
     async removeMeetup(meetup: Meetup): Promise<void> {
-            this.meetups = this.meetups.filter((m) => m.id !== meetup.id)
-            const ref = doc(db, "users", this.id)
-        await updateDoc(ref, {
-            meetupIds: arrayRemove(meetup.id),
-            updatedAt: serverTimestamp(),
-        } as any)
+        this.meetups = this.meetups.filter((m) => m.id !== meetup.id)
+        await this.save()
     }
 
     getMeetups(): Array<Meetup> {
@@ -83,15 +91,9 @@ export class User {
 
     // Save current fields to Firestore (replaces meetupIds with current in-memory list)
     async save(): Promise<void> {
-        const ref = doc(db, "users", this.id)
-        const payload: Partial<UserDoc> = {
-            name: this.name,
-            email: this.email,
-            currentLocation: this.currentLocation ?? null,
-            meetupIds: this.getMeetupIds(),
-            updatedAt: serverTimestamp(),
-        }
-        await updateDoc(ref, payload as any)
+        console.log("Saving user to Firestore:", this)
+        const dbi = db
+        await dbi.saveUser(this)
     }
 
     // === Mapping helpers ===
@@ -119,81 +121,36 @@ export class User {
         email: string
         currentLocation: [longitude: number, latitude: number] | null,
     }): Promise<User> {
-            const ref = doc(db, "users", args.id)
-        const docData: UserDoc = {
-                id: args.id,
-            name: args.name,
-            email: args.email,
-            currentLocation: args.currentLocation ?? null,
-            meetupIds: [],
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-        }
-        await setDoc(ref, docData as any)
-            return User.fromDoc(args.id, docData)
+        const user = new User(args.id, args.name, args.email, args.currentLocation ?? null)
+        const dbi = db
+        await dbi.createUser(user)
+        return user
     }
 
     // without meetups loaded
     static async loadFromFirestore(id: string): Promise<User | null> {
-            const ref = doc(db, "users", id)
-        const snap = await getDoc(ref)
-        if (!snap.exists()) return null
-        const data = snap.data() as UserDoc
-            const user = User.fromDoc(id, data)
-
-            console.log("user returned at loadFromFirestore: ", user)
-            return user
+        const dbi = db
+        return await dbi.getUserById(id)
     }
 
     // with meetups loaded
     static async loadFromFirestoreFull(id: string): Promise<User | null> {
-            const ref = doc(db, "users", id)
-        const snap = await getDoc(ref)
-        if (!snap.exists()) return null
-        const data = snap.data() as UserDoc
-            const user = User.fromDoc(id, data)
-
-            // Hydrate meetups during load using Meetup.load (single-item loader)
-            const ids = data.meetupIds
-            console.log(`User ${id} has meetup IDs: `, ids)
-            if (ids.length > 0) {
-                const constructed: Meetup[] = []
-                for (const mid of ids) {
-                    try {
-                        console.log(`Loading meetup ${mid} for user ${id}`)
-                        const meetup = await Meetup.load(mid)
-                        console.log("Meetup Loaded: ", meetup)
-                        if (meetup) constructed.push(meetup)
-                        console.log(`Loaded meetup ${mid} for user ${id}: `, meetup)
-                    } catch {
-                        // skip failed loads
-                        console.log(`Failed to load meetup ${mid} for user ${id}`)
-                    }
-                }
-                console.log("constructed: ", constructed)
-                ;(user as any).meetups = constructed
-            }
-
-
-            console.log("user returned at loadFromFirestoreFull: ", user)
-            return user
+        const dbi = db
+        return await dbi.getUserByIdFull(id)
     }
     
     static async updateCurrentLocation(id: string, loc:[longitude: number, latitude: number] | null,
     ): Promise<void> {
-        const ref = doc(db, "users", id)
-        await updateDoc(ref, {
-            currentLocation: loc ?? null,
-            updatedAt: serverTimestamp(),
-        } as any)
+        // static updateCurrentLocation removed; use instance updateCurrentLocation instead
+        throw new Error("Use instance method updateCurrentLocation on a User instance")
     }
 
     static async updateFields(
         id: string,
         patch: Partial<Pick<UserDoc, "name" | "email" | "currentLocation">>,
     ): Promise<void> {
-        const ref = doc(db, "users", id)
-        await updateDoc(ref, { ...patch, updatedAt: serverTimestamp() } as any)
+        // static updateFields removed; use instance updateFields instead
+        throw new Error("Use instance method updateFields on a User instance")
     }
 
     

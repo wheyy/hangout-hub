@@ -1,4 +1,4 @@
-import { auth, db } from "@/lib/config/firebase"
+import { auth } from "@/lib/config/firebase"
 import { User as AppUser } from "@/lib/models/user"
 import {
   createUserWithEmailAndPassword,
@@ -14,32 +14,10 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification as fbSendEmailVerification,
 } from "firebase/auth"
-import { deleteDoc } from "firebase/firestore"
-import { doc, serverTimestamp, setDoc } from "firebase/firestore"
-// Note: Do NOT import user store here to avoid circular dependency.
 
-export interface AuthUser {
-  id: string
-  email: string
-  name: string
-  avatar_url?: string
-}
 
-export interface AuthState {
-  user: AuthUser | null
-  loading: boolean
-  error: string | null
-}
-
-function toAuthUser(user: User | null): AuthUser | null {
-  if (!user) return null
-  return {
-    id: user.uid,
-    email: user.email || "",
-    name: user.displayName || user.email?.split("@")[0] || "",
-    avatar_url: user.photoURL || undefined,
-  }
-}
+// Single hydrated current user cache (full user with meetups).
+let CURRENT_USER: AppUser | Promise<AppUser | null> | null = null
 
 function mapFirebaseError(code: string): string {
   switch (code) {
@@ -66,13 +44,13 @@ function mapFirebaseError(code: string): string {
 }
 
 export const authService = {
-  async signUp(email: string, password: string, name: string): Promise<AuthUser> {
+  async signUp(email: string, password: string, name: string): Promise<AppUser> {
     try {
       const cred = await createUserWithEmailAndPassword(auth, email, password)
       // Set display name
       await updateProfile(cred.user, { displayName: name })
       // Create user document using our model
-      await AppUser.createInFirestore({
+      const u = await AppUser.createInFirestore({
         id: cred.user.uid,
         name,
         email: cred.user.email ?? email,
@@ -89,19 +67,15 @@ export const authService = {
         // ignore failures to send verification email
       }
       await fbSignOut(auth)
-      // Return unified shape
-      return {
-        id: cred.user.uid,
-        email: cred.user.email ?? email,
-        name,
-        avatar_url: cred.user.photoURL || undefined,
-      }
+      CURRENT_USER = null
+      // Return domain user (note: user will be signed out after this)
+      return u
     } catch (e: any) {
       throw new Error(mapFirebaseError(e?.code || ""))
     }
   },
 
-  async signIn(email: string, password: string): Promise<AuthUser> {
+  async signIn(email: string, password: string): Promise<AppUser> {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
       // Block unverified emails
@@ -110,14 +84,10 @@ export const authService = {
         throw new Error("Please verify your email before signing in.")
       }
       // Load user document; if missing, raise an error
-      const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
+  const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
       if (!u) throw new Error("User profile not found.")
-      return {
-        id: cred.user.uid,
-        email: u.email,
-        name: u.name,
-        avatar_url: cred.user.photoURL || undefined,
-      }
+  CURRENT_USER = u
+      return u
     } catch (e: any) {
       // Preserve explicit error messages (e.g., verification required)
       if (e && typeof e === "object" && "code" in e && e.code) {
@@ -133,50 +103,20 @@ export const authService = {
   async signOut(): Promise<void> {
     try {
       await fbSignOut(auth)
+      CURRENT_USER = null
     } catch (e: any) {
       throw new Error("Failed to sign out. Please try again.")
     }
   },
 
-  async getCurrentUser(): Promise<AuthUser | null> {
-    // If already available, try to enrich from user doc
-    const cur = auth.currentUser
-    if (cur) {
-      try {
-        const u = await AppUser.loadFromFirestore(cur.uid)
-        if (!u) return null
-        return { id: cur.uid, email: u.email, name: u.name, avatar_url: cur.photoURL || undefined }
-      } catch {
-        // Fallback to auth-only mapping
-        return toAuthUser(cur)
-      }
-    }
 
-    // Await one-time auth state, then load user doc
-    return new Promise<AuthUser | null>((resolve) => {
-      const unsub = onAuthStateChanged(auth, async (user) => {
-        unsub()
-        if (!user) return resolve(null)
-        try {
-          const u = await AppUser.loadFromFirestore(user.uid)
-          if (!u) return resolve(null)
-          resolve({ id: user.uid, email: u.email, name: u.name, avatar_url: user.photoURL || undefined })
-        } catch {
-          resolve(toAuthUser(user))
-        }
-      })
-    })
-  },
-
-  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
-    const user = auth.currentUser
-    if (!user || !user.email) {
-      throw new Error("Not authenticated.")
-    }
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const fbUser = auth.currentUser
+    if (!fbUser || !fbUser.email) throw new Error("Not authenticated.")
     try {
-      const credential = EmailAuthProvider.credential(user.email, currentPassword)
-      await reauthenticateWithCredential(user, credential)
-      await fbUpdatePassword(user, newPassword)
+      const credential = EmailAuthProvider.credential(fbUser.email, currentPassword)
+      await reauthenticateWithCredential(fbUser, credential)
+      await fbUpdatePassword(fbUser, newPassword)
     } catch (e: any) {
       const code = e?.code || ""
       if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
@@ -186,27 +126,33 @@ export const authService = {
     }
   },
 
-  async updateName(newName: string): Promise<void> {
-    const user = auth.currentUser
-    if (!user) throw new Error("Not authenticated.")
+  async changeDisplayName(newName: string): Promise<void> {
+    const fbUser = auth.currentUser
+    if (!fbUser) throw new Error("Not authenticated.")
     const name = newName?.trim()
     if (!name) throw new Error("Name cannot be empty.")
-    await updateProfile(user, { displayName: name })
-    await AppUser.updateFields(user.uid, { name })
+    await updateProfile(fbUser, { displayName: name })
+    const u = await AppUser.loadFromFirestore(fbUser.uid)
+    if (!u) throw new Error("User profile not found.")
+    await u.updateName(name)
+    // Keep cache in sync with the updated user; keep it simple.
+    CURRENT_USER = u
   },
 
     async deleteAccount(): Promise<void> {
-      const user = auth.currentUser
-      if (!user) throw new Error("Not authenticated.")
-      const uid = user.uid
+      const fbUser = auth.currentUser
+      if (!fbUser) throw new Error("Not authenticated.")
+      const u = await AppUser.loadFromFirestore(fbUser.uid)
+      if (!u) throw new Error("User profile not found.")
+      // Remove user doc via User (DB layer encapsulated) then delete auth user
       try {
-        // Attempt to delete Firestore user document first
-        await deleteDoc(doc(db, "users", uid))
-      } catch (e) {
-        // Ignore doc deletion errors; proceed to delete auth user
+        await u.removeAccount()
+      } catch {
+        // ignore Firestore deletion issues and still attempt to delete auth user
       }
       try {
-        await fbDeleteUser(user)
+        await fbDeleteUser(fbUser)
+        CURRENT_USER = null
       } catch (e: any) {
         const code = e?.code || ""
         if (code === "auth/requires-recent-login") {
@@ -244,6 +190,7 @@ export const authService = {
         await fbSendEmailVerification(cred.user, actionCodeSettings as any)
       } finally {
         await fbSignOut(auth)
+        CURRENT_USER = null
       }
     } catch (e: any) {
       const code = e?.code || ""
@@ -255,29 +202,52 @@ export const authService = {
   },
 
   // Returns the hydrated domain User (with meetups loaded via user.ts)
-  async getCurrentUserFull(): Promise<AppUser> {
-    const resolveWithUser = async (fbUser: User): Promise<AppUser> => {
-      const u = await AppUser.loadFromFirestoreFull(fbUser.uid)
-      if (!u) throw new Error("User profile not found.")
-      return u
+  async getCurrentUserFull(): Promise<AppUser | null> {
+    // If CURRENT_USER holds a resolved AppUser, return it
+    if (CURRENT_USER && typeof (CURRENT_USER as any).then !== "function") {
+      return CURRENT_USER as AppUser
     }
 
-    const cur = auth.currentUser
-    if (cur) {
-      return resolveWithUser(cur)
+    // If CURRENT_USER is a Promise (hydration in-flight), await and return
+    if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {
+      return (await (CURRENT_USER as Promise<AppUser | null>)) ?? null
     }
 
-    return new Promise<AppUser>((resolve, reject) => {
-      const unsub = onAuthStateChanged(auth, async (u) => {
-        unsub()
-        if (!u) return reject(new Error("Not authenticated."))
-        try {
-          const full = await resolveWithUser(u)
-          resolve(full)
-        } catch (e) {
-          reject(e)
-        }
+    // if auth.currentUser is not yet set.
+    let fb = auth.currentUser
+    if (!fb) {
+      fb = await new Promise<User | null>((resolve) => {
+        const unsub = onAuthStateChanged(
+          auth,
+          (u) => {
+            unsub()
+            resolve(u)
+          },
+          () => {
+            unsub()
+            resolve(null)
+          },
+        )
       })
-    })
-  },
+    }
+    if (!fb) return null
+
+    // Start hydration and store the Promise in CURRENT_USER to dedupe concurrent calls
+    const p = AppUser.loadFromFirestoreFull(fb.uid)
+      .then((u) => {
+        // Only commit if CURRENT_USER is still a Promise (i.e., in-flight)
+        if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {
+          CURRENT_USER = u ?? null
+        }
+        return u ?? null
+      })
+      .catch(() => {
+        if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {
+          CURRENT_USER = null
+        }
+        return null
+      })
+    CURRENT_USER = p
+    return await p
+  }
 }

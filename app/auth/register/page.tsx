@@ -63,7 +63,7 @@ export default function RegisterPage() {
     }
 
     try {
-      await authService.signUp(formData.email, formData.password, formData.name)
+  await authService.signUp(formData.email, formData.password, formData.name)
       router.push(`/auth/verify?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed. Please try again.")
