@@ -38,7 +38,7 @@ export class Meetup {
         this.memberStatuses.set(creator.id, {
             userId: creator.id,
             status: "traveling",
-            locationSharingEnabled: true,
+            locationSharingEnabled: false,
             arrivedAt: null,
             joinedAt: new Date().toISOString()
         })
@@ -99,7 +99,7 @@ export class Meetup {
             this.memberStatuses.set(user.id, {
                 userId: user.id,
                 status: "traveling",
-                locationSharingEnabled: true,
+                locationSharingEnabled: false,
                 arrivedAt: null,
                 joinedAt: new Date().toISOString()
             })

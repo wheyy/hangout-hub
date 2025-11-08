@@ -22,192 +22,31 @@ interface LiveMapViewProps {
   meetup: Meetup
 }
 
-function LiveMapContent({ meetup }: LiveMapViewProps) {
+interface MapRendererProps {
+  members: Array<{ id: string; name: string }>
+  memberLocations: Map<string, [number, number] | null>
+  destination: { name: string; coordinates: [number, number] }
+  currentUserId: string | undefined
+}
+
+function MapRenderer({ members, memberLocations, destination, currentUserId }: MapRendererProps) {
   const { map, isLoaded } = useMap()
-  const currentUser = useUserStore((s) => s.user)
-  const router = useRouter()
-  const { toast } = useToast()
-  const [memberLocations, setMemberLocations] = useState<Map<string, [number, number] | null>>(new Map())
-  const [routes, setRoutes] = useState<Map<string, any>>(new Map())
-  const [isLocationSharing, setIsLocationSharing] = useState(true)
-  const [locationService] = useState(() => new LocationTrackingService())
-  const [isArriveModalOpen, setIsArriveModalOpen] = useState(false)
-  const [isAllArrivedModalOpen, setIsAllArrivedModalOpen] = useState(false)
-  const [hasShownAllArrivedModal, setHasShownAllArrivedModal] = useState(false)
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  const members = meetup.getMembers()
-  const destination = meetup.destination
-  const isCreator = currentUser?.getId() === meetup.creator.getId()
-  const currentMemberStatus = currentUser ? meetup.getMemberStatus(currentUser.getId()) : undefined
-  const isArrived = currentMemberStatus?.status === "arrived"
-  const [isNearDestination, setIsNearDestination] = useState(false)
-  const ARRIVAL_RADIUS_METERS = 200
-
-  // Check if user is near destination
-  useEffect(() => {
-    if (!currentUser || isArrived) return
-
-    const userLocation = memberLocations.get(currentUser.getId())
-    if (!userLocation) return
-
-    const distance = haversineDistance(userLocation, destination.coordinates)
-    setIsNearDestination(distance <= ARRIVAL_RADIUS_METERS)
-  }, [memberLocations, currentUser, destination, isArrived])
-
-  // Count active members (those with location)
-  const activeMemberCount = useMemo(() => {
-    return Array.from(memberLocations.values()).filter((loc) => loc !== null).length
-  }, [memberLocations])
-
-  // Subscribe to member location updates
-  useEffect(() => {
-    if (!members.length) return
-
-    const locationService = new LocationTrackingService()
-    const memberIds = members.map((m) => m.id)
-
-    const cleanup = locationService.subscribeToMemberLocations(memberIds, (locations) => {
-      setMemberLocations(locations)
-    })
-
-    return () => cleanup()
-  }, [members])
-
-  // Start tracking own location
-  useEffect(() => {
-    if (!currentUser || !isLocationSharing || isArrived) return
-
-    let cleanup: (() => void) | null = null
-
-    locationService.startTrackingOwnLocation(currentUser.id).then((cleanupFn) => {
-      cleanup = cleanupFn
-    })
-
-    return () => {
-      if (cleanup) cleanup()
+  const getMemberColorForIndex = (memberId: string, members: Array<{ id: string; name: string }>) => {
+    if (memberId === currentUserId) {
+      return CURRENT_USER_COLOR
     }
-  }, [currentUser, isLocationSharing, isArrived, locationService])
 
-  // Check if all members arrived (for creator)
-  useEffect(() => {
-    if (!isCreator || hasShownAllArrivedModal) return
-
-    if (meetup.allMembersArrived() && meetup.getMemberCount() > 1) {
-      setIsAllArrivedModalOpen(true)
-      setHasShownAllArrivedModal(true)
-    }
-  }, [meetup, isCreator, hasShownAllArrivedModal])
-
-  // // Handle location sharing toggle (there's a duplicate and this is not in use)
-  // const handleLocationToggle = async (enabled: boolean) => {
-  //   if (!currentUser) return
-
-  //   try {
-  //     setError(null)
-  //     setIsLocationSharing(enabled)
-
-  //     if (enabled) {
-  //       const success = await meetup.updateLocationSharing(currentUser.getId(), true)
-  //       if (!success) {
-  //         throw new Error("Failed to enable location sharing")
-  //       }
-  //     } else {
-  //       await locationService.stopTrackingOwnLocation(currentUser.id)
-  //       const success = await meetup.updateLocationSharing(currentUser.getId(), false)
-  //       if (!success) {
-  //         throw new Error("Failed to disable location sharing")
-  //       }
-  //     }
-  //   } catch (err) {
-  //     const errorMessage = err instanceof Error ? err.message : "Failed to update location sharing"
-  //     setError(errorMessage)
-  //     setIsLocationSharing(!enabled) // Revert on error
-  //     toast({
-  //       title: "Error",
-  //       description: errorMessage,
-  //       variant: "destructive",
-  //     })
-  //     console.error("Location toggle error:", err)
-  //   }
-  // }
-
-  // Handle arrive button
-  const handleArriveClick = () => {
-    setIsArriveModalOpen(true)
+    const nonCurrentUserMembers = members.filter(m => m.id !== currentUserId)
+    const memberIndex = nonCurrentUserMembers.findIndex(m => m.id === memberId)
+    return getMemberColor(memberIndex)
   }
 
-  const handleArriveConfirm = async () => {
-    if (!currentUser) return
-
-    try {
-      setError(null)
-      setIsUpdatingStatus(true)
-
-      const newStatus = isArrived ? "traveling" : "arrived"
-      const success = await meetup.updateMemberStatus(currentUser.getId(), newStatus)
-      
-      if (!success) {
-        throw new Error("Failed to update arrival status")
-      }
-
-      if (newStatus === "arrived") {
-        setIsLocationSharing(false)
-        await locationService.stopTrackingOwnLocation(currentUser.id)
-      } else {
-        setIsLocationSharing(true)
-      }
-
-      setIsArriveModalOpen(false)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to update arrival status"
-      setError(errorMessage)
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
-      console.error("Arrive confirmation error:", err)
-    } finally {
-      setIsUpdatingStatus(false)
-    }
-  }
-
-  const handleEndMeetup = async () => {
-    try {
-      setError(null)
-      setIsUpdatingStatus(true)
-
-      const success = await meetup.deleteMeetup()
-      if (success) {
-        router.push("/meetups")
-      } else {
-        throw new Error("Failed to end meetup")
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to end meetup"
-      setError(errorMessage)
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
-      console.error("End meetup error:", err)
-      setIsAllArrivedModalOpen(false)
-    } finally {
-      setIsUpdatingStatus(false)
-    }
-  }
-
-  // Render markers and routes on map
   useEffect(() => {
     if (!map || !isLoaded) return
 
-    // Clear existing markers and routes
     map.clearAll()
 
-    // Add destination marker (red)
     map.addMarker({
       id: "destination",
       coordinates: destination.coordinates,
@@ -215,30 +54,22 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
       color: DESTINATION_COLOR,
     })
 
-    // Add member markers
-    let colorIndex = 0
     members.forEach((member) => {
       const location = memberLocations.get(member.id)
       if (!location) return
 
-      const isCurrentUser = member.id === currentUser?.id
-      const color = isCurrentUser ? CURRENT_USER_COLOR : getMemberColor(colorIndex)
-      
-      // Only increment color index for non-current users
-      if (!isCurrentUser) {
-        colorIndex++
-      }
+      const color = getMemberColorForIndex(member.id, members)
+      const isCurrentUser = member.id === currentUserId
 
       map.addMarker({
         id: `member-${member.id}`,
         coordinates: location,
         title: member.name,
         color: color,
-        isSelected: isCurrentUser, // This will make it pulse
+        isSelected: isCurrentUser,
       })
     })
 
-    // Fit bounds to show all markers
     const allCoords: [number, number][] = [destination.coordinates]
     memberLocations.forEach((loc) => {
       if (loc) allCoords.push(loc)
@@ -255,16 +86,12 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
       ]
       map.fitBounds(bounds)
     }
-  }, [map, isLoaded, members, memberLocations, destination, currentUser])
+  }, [map, isLoaded, members, memberLocations, destination, currentUserId])
 
-  // Fetch and draw routes
   useEffect(() => {
     if (!map || !isLoaded) return
 
     const fetchRoutes = async () => {
-      const newRoutes = new Map()
-      let colorIndex = 0
-
       for (const member of members) {
         const location = memberLocations.get(member.id)
         if (!location) continue
@@ -278,47 +105,36 @@ function LiveMapContent({ meetup }: LiveMapViewProps) {
 
           if (response.routes && response.routes.length > 0) {
             const route = response.routes[0]
-            const isCurrentUser = member.id === currentUser?.id
-            const color = isCurrentUser ? CURRENT_USER_COLOR : getMemberColor(colorIndex)
-            
-            // Only increment color index for non-current users
-            if (!isCurrentUser) {
-              colorIndex++
-            }
+            const color = getMemberColorForIndex(member.id, members)
 
-            // Draw route on map
             map.addRoute({
               id: `route-${member.id}`,
               coordinates: route.geometry.coordinates,
               color: color,
               width: 3,
             })
-
-            newRoutes.set(member.id, route)
           }
         } catch (error) {
           console.error(`Failed to fetch route for ${member.name}:`, error)
         }
       }
-
-      setRoutes(newRoutes)
     }
 
     fetchRoutes()
-  }, [map, isLoaded, members, memberLocations, destination, currentUser])
+  }, [map, isLoaded, members, memberLocations, destination, currentUserId])
 
   return null
 }
 
-function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
+export function LiveMapView({ meetup }: LiveMapViewProps) {
   const currentUser = useUserStore((s) => s.user)
+  const router = useRouter()
+  const { toast } = useToast()
+
   const [memberLocations, setMemberLocations] = useState<Map<string, [number, number] | null>>(new Map())
-  const [isLocationSharing, setIsLocationSharing] = useState(true)
-  const [hasLocationPermission, setHasLocationPermission] = useState<boolean>(false)
+  const [isLocationSharing, setIsLocationSharing] = useState(false)
   const [isArriveModalOpen, setIsArriveModalOpen] = useState(false)
   const [isAllArrivedModalOpen, setIsAllArrivedModalOpen] = useState(false)
-  const { toast } = useToast()
-  const router = useRouter()
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [locationService] = useState(() => new LocationTrackingService())
@@ -331,12 +147,10 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
   const [isNearDestination, setIsNearDestination] = useState(false)
   const ARRIVAL_RADIUS_METERS = 200
 
-  // Count active members
   const activeMemberCount = useMemo(() => {
     return Array.from(memberLocations.values()).filter((loc) => loc !== null).length
   }, [memberLocations])
 
-  // Subscribe to member location updates
   useEffect(() => {
     if (!members.length) return
 
@@ -350,7 +164,21 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
     return () => cleanup()
   }, [members])
 
-  // Start tracking own location
+  useEffect(() => {
+    if (!currentUser || !currentMemberStatus) return
+
+    const firestoreLocationSharing = currentMemberStatus.locationSharingEnabled
+    setIsLocationSharing(firestoreLocationSharing)
+
+    if (firestoreLocationSharing && !isArrived) {
+      requestLocationPermission().then((granted) => {
+        if (granted) {
+          locationService.startTrackingOwnLocation(currentUser.id)
+        }
+      })
+    }
+  }, [currentUser, currentMemberStatus?.locationSharingEnabled, isArrived])
+
   useEffect(() => {
     if (!currentUser || !isLocationSharing || isArrived) return
 
@@ -365,7 +193,6 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
     }
   }, [currentUser, isLocationSharing, isArrived, locationService])
 
-  // Check if user is near destination
   useEffect(() => {
     if (!currentUser || isArrived) return
 
@@ -376,37 +203,27 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
     setIsNearDestination(distance <= ARRIVAL_RADIUS_METERS)
   }, [memberLocations, currentUser, destination, isArrived])
 
-  // ✅ Request location permission with better UX
   const requestLocationPermission = async (): Promise<boolean> => {
     try {
-      // Check current permission state
       const permission = await navigator.permissions.query({ name: "geolocation" })
-      
-      console.log("📍 Permission state:", permission.state)
-      
+
       if (permission.state === "granted") {
-        setHasLocationPermission(true)
         return true
       }
-      
+
       if (permission.state === "denied") {
-        setHasLocationPermission(false)
         setError("Location permission denied. Please enable it in browser settings.")
         return false
       }
-      
-      // Permission is "prompt" - request it
+
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
-          (position) => {
-            console.log("✅ Location permission granted")
-            setHasLocationPermission(true)
+          () => {
             setError(null)
             resolve(true)
           },
           (error) => {
-            console.error("❌ Location permission denied:", error)
-            setHasLocationPermission(false)
+            console.error("Location permission denied:", error)
             setError("Location access denied. Please enable location services.")
             resolve(false)
           },
@@ -417,63 +234,44 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           }
         )
       })
-      handleLocationToggle(hasLocationPermission)
     } catch (error) {
       console.error("Error checking permission:", error)
-      setHasLocationPermission(false)
       setError("Failed to check location permissions")
       return false
     }
   }
 
-  // ✅ Initialize - check permission on mount
-  useEffect(() => {
-    const initializeLocation = async () => {
-      const granted = await requestLocationPermission()
-      
-      // If permission granted and user wants to share, start sharing
-      if (granted && currentMemberStatus?.locationSharingEnabled) {
-        handleLocationToggle(true)
-      } else {
-        handleLocationToggle(false)
-      }
-    }
-    
-    initializeLocation()
-  }, [])
-  
-  // Handle location sharing toggle
   const handleLocationToggle = async (enabled: boolean) => {
     if (!currentUser) return
 
     try {
       setError(null)
-      setIsLocationSharing(enabled)
 
       if (enabled) {
-        if(hasLocationPermission === false) {
-          const granted = await requestLocationPermission()
-          if (!granted) {
-            handleLocationToggle(false)
-            return
-          }
+        const granted = await requestLocationPermission()
+        if (!granted) {
+          return
         }
+
         const success = await meetup.updateLocationSharing(currentUser.getId(), true)
         if (!success) {
           throw new Error("Failed to enable location sharing")
         }
+
+        setIsLocationSharing(true)
       } else {
-        requestLocationPermission()
         await locationService.stopTrackingOwnLocation(currentUser.id)
+
         const success = await meetup.updateLocationSharing(currentUser.getId(), false)
         if (!success) {
           throw new Error("Failed to disable location sharing")
         }
+
+        setIsLocationSharing(false)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update location sharing"
       setError(errorMessage)
-      setIsLocationSharing(!enabled)
       toast({
         title: "Error",
         description: errorMessage,
@@ -496,7 +294,7 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
 
       const newStatus = isArrived ? "traveling" : "arrived"
       const success = await meetup.updateMemberStatus(currentUser.getId(), newStatus)
-      
+
       if (!success) {
         throw new Error("Failed to update arrival status")
       }
@@ -505,13 +303,15 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
         setIsLocationSharing(false)
         await locationService.stopTrackingOwnLocation(currentUser.id)
       } else {
-        setIsLocationSharing(true)
+        const firestoreEnabled = meetup.getMemberStatus(currentUser.getId())?.locationSharingEnabled
+        if (firestoreEnabled) {
+          setIsLocationSharing(true)
+        }
       }
 
       setIsArriveModalOpen(false)
 
-      // Check if all members have arrived
-      if (isCreator && meetup.allMembersArrived()) {
+      if (isCreator && meetup.allMembersArrived() && meetup.getMemberCount() > 1) {
         setIsAllArrivedModalOpen(true)
       }
     } catch (err) {
@@ -532,10 +332,9 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
     try {
       setError(null)
       setIsUpdatingStatus(true)
-      
-      // End the meetup
+
       const success = await meetup.endMeetup()
-      
+
       if (!success) {
         throw new Error("Failed to end meetup")
       }
@@ -563,7 +362,6 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
       <div className="p-4 bg-white border-b shrink-0">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-gray-900">Live Group Map</h2>
@@ -574,7 +372,6 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
         <div className="text-sm text-gray-600">Destination: {destination.name}</div>
       </div>
 
-      {/* Map Container - takes remaining space */}
       <div className="flex-1 relative min-h-0">
         <MapProviderComponent
           options={{
@@ -583,13 +380,16 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           }}
           className="w-full h-full"
         >
-          <LiveMapContent meetup={meetup} />
+          <MapRenderer
+            members={members}
+            memberLocations={memberLocations}
+            destination={destination}
+            currentUserId={currentUser?.getId()}
+          />
         </MapProviderComponent>
       </div>
 
-      {/* Footer with controls */}
       <div className="bg-white border-t p-4 space-y-3 shrink-0">
-        {/* Error Alert */}
         {error && (
           <Alert className="border-red-200 bg-red-50">
             <AlertCircle className="w-4 h-4 text-red-600" />
@@ -599,7 +399,6 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           </Alert>
         )}
 
-        {/* Near Destination Alert */}
         {isNearDestination && !isArrived && (
           <Alert className="border-green-200 bg-green-50">
             <AlertCircle className="w-4 h-4 text-green-600" />
@@ -609,8 +408,7 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           </Alert>
         )}
 
-        {/* Live Location Toggle */}
-        <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-center justify-between p-4 rounded-lg">
           <div className="flex items-center gap-3">
             <Navigation className="w-5 h-5 text-blue-600" />
             <div>
@@ -627,7 +425,6 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
           />
         </div>
 
-        {/* Arrive Button */}
         <Button
           onClick={handleArriveClick}
           disabled={isUpdatingStatus}
@@ -659,7 +456,6 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
         </Button>
       </div>
 
-      {/* Modals */}
       <ArriveConfirmationModal
         isOpen={isArriveModalOpen}
         onClose={() => !isUpdatingStatus && setIsArriveModalOpen(false)}
@@ -680,8 +476,4 @@ function LiveMapViewLayout({ meetup }: LiveMapViewProps) {
       )}
     </div>
   )
-}
-
-export function LiveMapView({ meetup }: LiveMapViewProps) {
-  return <LiveMapViewLayout meetup={meetup} />
 }
