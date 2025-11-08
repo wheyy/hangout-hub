@@ -27,7 +27,7 @@ export class DBServiceFactory {
             datastore = new MockDBService();
 		} else { // default to firestore
             console.warn(`Unknown datastore option "${datastoreOption}", defaulting to 'firestore'`);
-            datastore = new MockDBService();
+            datastore = new FirestoreDBService();
 		}
 		
 		return datastore;
