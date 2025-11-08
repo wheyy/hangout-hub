@@ -60,8 +60,8 @@ export class User {
     async addMeetup(meetup: Meetup): Promise<void> {
         if (!this.meetups.find((m) => m.id === meetup.id)) {
             this.meetups.push(meetup)
+            await this.save()
         }
-        await this.save()
     }
 
     async removeMeetup(meetup: Meetup): Promise<void> {
@@ -91,6 +91,7 @@ export class User {
 
     // Save current fields to Firestore (replaces meetupIds with current in-memory list)
     async save(): Promise<void> {
+        console.log("Saving user to Firestore:", this)
         const dbi = db
         await dbi.saveUser(this)
     }

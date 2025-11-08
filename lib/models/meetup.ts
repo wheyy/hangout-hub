@@ -42,8 +42,6 @@ export class Meetup {
             arrivedAt: null,
             joinedAt: new Date().toISOString()
         })
-        creator.addMeetup(this)
-        console.log(`Meetup ${this.title} created by ${this.creator.name}`)
     }
 
     
@@ -54,7 +52,11 @@ export class Meetup {
         destination: HangoutSpot,
         creator: User
     ): Promise<Meetup> {
-        return await db.createMeetup(title, dateTime, destination, creator)
+        const meetup = await db.createMeetup(title, dateTime, destination, creator)
+        creator.addMeetup(meetup)
+        console.log(`Meetup ${meetup.title} created by ${creator.name}`)
+        return meetup
+
     }
     // Load a single meetup from Firestore
     static async load(meetupId: string): Promise<Meetup | null> {

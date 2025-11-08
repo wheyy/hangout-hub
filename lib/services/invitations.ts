@@ -183,7 +183,8 @@ export async function acceptInvitation({
 
     // don't have time to edit all but this portion is required to update the meetups right after accepting
     const meetup = await Meetup.load(meetupId);
-    const recipient = await User.loadFromFirestoreFull(recipientId);
+    // const recipient = await User.loadFromFirestoreFull(recipientId);
+    const recipient = useUserStore.getState().user;
     if (!meetup) throw new Error("Meetup not found");
     else if (!recipient) throw new Error("Recipient user not found");
     else { meetup.addMember(recipient); 
