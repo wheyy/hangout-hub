@@ -25,6 +25,7 @@ export function DeleteMeetupModal({
   onClose,
   meetup,
 }: DeleteMeetupModalProps) {
+  
   // DeleteMeetupModalController
   const [confirmText, setConfirmText] = useState("")
   const router = useRouter()

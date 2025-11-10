@@ -28,6 +28,7 @@ import { AppHeader } from "@/components/layout/app-header"
 import { useSearchParams, useRouter } from "next/navigation"
 
 export default function MeetupsPage() {
+// MeetupsController
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const searchParams = useSearchParams()
@@ -89,6 +90,7 @@ export default function MeetupsPage() {
     return destination?.name || 'Unknown location'
   }
 
+  // MeetupsView
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gray-50">

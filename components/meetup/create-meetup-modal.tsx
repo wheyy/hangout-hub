@@ -20,6 +20,7 @@ interface CreateMeetupModalProps {
 }
 
 export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
+// CreateMeetupModalController
   console.log('CreateMeetupModal render - isOpen:', isOpen)
   
   const [formData, setFormData] = useState({
@@ -177,6 +178,7 @@ export function CreateMeetupModal({ isOpen, onClose }: CreateMeetupModalProps) {
     router.push(`/meetup/${newMeetup.id}`)
   }
 
+  // CreateMeetupModalView
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md">

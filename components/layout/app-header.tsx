@@ -115,7 +115,7 @@ export function AppHeader({ currentPage, isAuthenticated }: AppHeaderProps) {
         ) : (
           <Link href="/auth/login">
             <Button variant="outline" size="sm">
-              Sign up
+              Sign In
             </Button>
           </Link>
         )}
