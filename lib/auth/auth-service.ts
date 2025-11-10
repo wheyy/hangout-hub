@@ -84,7 +84,7 @@ export const authService = {
         throw new Error("Please verify your email before signing in.")
       }
       // Load user document; if missing, raise an error
-  const u = await AppUser.loadFromFirestoreFull(cred.user.uid)
+  const u = await AppUser.loadFromDatabaseFull(cred.user.uid)
       if (!u) throw new Error("User profile not found.")
   CURRENT_USER = u
       return u
@@ -132,7 +132,7 @@ export const authService = {
     const name = newName?.trim()
     if (!name) throw new Error("Name cannot be empty.")
     await updateProfile(fbUser, { displayName: name })
-    const u = await AppUser.loadFromFirestore(fbUser.uid)
+    const u = await AppUser.loadFromDatabase(fbUser.uid)
     if (!u) throw new Error("User profile not found.")
     await u.updateName(name)
     // Keep cache in sync with the updated user; keep it simple.
@@ -142,7 +142,7 @@ export const authService = {
     async deleteAccount(): Promise<void> {
       const fbUser = auth.currentUser
       if (!fbUser) throw new Error("Not authenticated.")
-      const u = await AppUser.loadFromFirestore(fbUser.uid)
+      const u = await AppUser.loadFromDatabase(fbUser.uid)
       if (!u) throw new Error("User profile not found.")
       // Remove user doc via User (DB layer encapsulated) then delete auth user
       try {
@@ -233,7 +233,7 @@ export const authService = {
     if (!fb) return null
 
     // Start hydration and store the Promise in CURRENT_USER to dedupe concurrent calls
-    const p = AppUser.loadFromFirestoreFull(fb.uid)
+    const p = AppUser.loadFromDatabaseFull(fb.uid)
       .then((u) => {
         // Only commit if CURRENT_USER is still a Promise (i.e., in-flight)
         if (CURRENT_USER && typeof (CURRENT_USER as any).then === "function") {

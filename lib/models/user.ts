@@ -128,30 +128,14 @@ export class User {
     }
 
     // without meetups loaded
-    static async loadFromFirestore(id: string): Promise<User | null> {
+    static async loadFromDatabase(id: string): Promise<User | null> {
         const dbi = db
         return await dbi.getUserById(id)
     }
 
     // with meetups loaded
-    static async loadFromFirestoreFull(id: string): Promise<User | null> {
+    static async loadFromDatabaseFull(id: string): Promise<User | null> {
         const dbi = db
         return await dbi.getUserByIdFull(id)
     }
-    
-    static async updateCurrentLocation(id: string, loc:[longitude: number, latitude: number] | null,
-    ): Promise<void> {
-        // static updateCurrentLocation removed; use instance updateCurrentLocation instead
-        throw new Error("Use instance method updateCurrentLocation on a User instance")
-    }
-
-    static async updateFields(
-        id: string,
-        patch: Partial<Pick<UserDoc, "name" | "email" | "currentLocation">>,
-    ): Promise<void> {
-        // static updateFields removed; use instance updateFields instead
-        throw new Error("Use instance method updateFields on a User instance")
-    }
-
-    
 }
