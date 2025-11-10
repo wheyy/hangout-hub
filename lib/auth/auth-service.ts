@@ -1,4 +1,4 @@
-import { auth } from "@/lib/config/firebase"
+import { app, auth } from "@/lib/config/firebase"
 import { User as AppUser } from "@/lib/models/user"
 import {
   createUserWithEmailAndPassword,
@@ -165,6 +165,9 @@ export const authService = {
   async sendPasswordReset(email: string): Promise<void> {
     try {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL
+      if (!appUrl){
+        throw new Error("App URL is not configured.")
+      }
       const actionCodeSettings = appUrl
         ? { url: `${appUrl.replace(/\/$/, "")}/auth/reset/confirm`, handleCodeInApp: true }
         : undefined
