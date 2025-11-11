@@ -11,7 +11,8 @@ import {
     deleteDoc,
     query,
     where,
-    updateDoc
+    updateDoc,
+    arrayUnion
   } from "firebase/firestore"; 
 
 export interface MemberStatus {
@@ -94,17 +95,35 @@ export class Meetup {
 
     // Add member and update Firestore
     async addMember(user: User): Promise<void> {
-        if (!this.members.find(member => member.id === user.id)) {
-            this.members.push(user);
-            this.memberStatuses.set(user.id, {
-                userId: user.id,
-                status: "traveling",
-                locationSharingEnabled: false,
-                arrivedAt: null,
-                joinedAt: new Date().toISOString()
-            })
-            await this.save(); // Sync to Firestore
+        if (this.members.find(member => member.id === user.id)) {
+        console.log(`Member ${user.id} already exists`);
+        return; // Already a member
         }
+    
+        // ✅ Add to local state
+        this.members.push(user);
+        const memberStatus: MemberStatus = {
+        userId: user.id,
+        status: "traveling",
+        locationSharingEnabled: false,
+        arrivedAt: null,
+        joinedAt: new Date().toISOString()
+        };
+        this.memberStatuses.set(user.id, memberStatus);
+    
+        // ✅ Use atomic Firestore operations
+        const meetupRef = doc(firestoreDB, "meetups", this.id);
+        await updateDoc(meetupRef, {
+        memberIds: arrayUnion(user.id), // ✅ Atomic array add
+        [`members.${user.id}`]: {       // ✅ Set specific field
+            status: memberStatus.status,
+            locationSharingEnabled: memberStatus.locationSharingEnabled,
+            arrivedAt: memberStatus.arrivedAt,
+            joinedAt: memberStatus.joinedAt
+        }
+        });
+        
+        console.log(`✅ Member ${user.id} added atomically`);
     }
 
     // Add member without updating status (used when loading from Firebase)
